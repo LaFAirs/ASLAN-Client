@@ -143,7 +143,14 @@ public final class HudManager {
 
     private void renderArmor(DrawContext ctx, MinecraftClient mc, int x, int y) {
         int dx = x;
-        for (ItemStack stack : mc.player.getArmorItems()) {
+        net.minecraft.entity.EquipmentSlot[] slots = {
+            net.minecraft.entity.EquipmentSlot.HEAD,
+            net.minecraft.entity.EquipmentSlot.CHEST,
+            net.minecraft.entity.EquipmentSlot.LEGS,
+            net.minecraft.entity.EquipmentSlot.FEET
+        };
+        for (int i = 0; i < slots.length; i++) {
+            ItemStack stack = mc.player.getEquippedStack(slots[i]);
             if (stack == null || stack.isEmpty()) continue;
             ctx.drawItem(stack, dx, y);
             int dmg = stack.getMaxDamage() - stack.getDamage();

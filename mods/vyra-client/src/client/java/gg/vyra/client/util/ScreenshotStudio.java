@@ -20,8 +20,13 @@ public final class ScreenshotStudio {
         if (mc == null) return;
         try {
             String name = new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss").format(new Date());
-            net.minecraft.client.util.ScreenshotRecorder.saveScreenshot(
-                    dir(), name, mc.getFramebuffer(), text -> {});
+            File out = new File(dir(), "vyra-" + name + ".png");
+            net.minecraft.client.util.ScreenshotRecorder.takeScreenshot(mc.getFramebuffer(), img -> {
+                try {
+                    img.writeTo(out);
+                } catch (Exception ignored) {
+                }
+            });
         } catch (Exception ignored) {
         }
     }

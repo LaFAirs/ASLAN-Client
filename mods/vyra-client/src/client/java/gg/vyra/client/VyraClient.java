@@ -62,10 +62,10 @@ public final class VyraClient implements ClientModInitializer {
 
         quickKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.vyra.quick", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_V,
-                "category.vyra"));
+                KeyBinding.Category.MISC));
         menuKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.vyra.menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_G,
-                "category.vyra"));
+                KeyBinding.Category.MISC));
         LOG.info("[VYRA] Bereit. HUD-Profile: pvp/survival/creative.");
     }
 

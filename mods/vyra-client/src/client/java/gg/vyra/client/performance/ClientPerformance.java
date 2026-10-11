@@ -33,15 +33,15 @@ public final class ClientPerformance {
             } catch (Throwable ignored) {
             }
             try {
-                mc.options.getGraphicsMode().setValue(s.fancyGraphics
+                mc.options.applyGraphicsMode(s.fancyGraphics
                         ? net.minecraft.client.option.GraphicsMode.FANCY
                         : net.minecraft.client.option.GraphicsMode.FAST);
             } catch (Throwable ignored) {
             }
             try {
                 mc.options.getParticles().setValue(s.particles
-                        ? net.minecraft.client.option.ParticlesMode.ALL
-                        : net.minecraft.client.option.ParticlesMode.MINIMAL);
+                        ? net.minecraft.particle.ParticlesMode.ALL
+                        : net.minecraft.particle.ParticlesMode.MINIMAL);
             } catch (Throwable ignored) {
             }
             try {
