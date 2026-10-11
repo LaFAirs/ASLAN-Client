@@ -108,7 +108,7 @@ try {
 
 # --- 6) Fabric-Quellen ---
 try {
-    $mj = Join-Path $root "mods\vyra-client\src\main\java\gg\vyra\client"
+    $mj = Join-Path $root "mods\vyra-client\src\client\java\gg\vyra\client"
     $needJ = @("VyraClient.java","hud\HudManager.java","menu\VyraMainMenu.java","menu\HudEditorScreen.java","performance\ClientPerformance.java","util\BenchmarkRecorder.java","util\QuickSettings.java","util\SafeMode.java","util\ScreenshotStudio.java","util\ProfileSync.java","util\UpdateManager.java","util\SettingsSearch.java","util\DiscordPresence.java","mixin\TitleScreenMixin.java")
     $allOk = $true
     foreach ($n in $needJ) { if (!(Test-Path (Join-Path $mj $n))) { $allOk = $false; Write-Host ("fehlt: " + $n) } }
