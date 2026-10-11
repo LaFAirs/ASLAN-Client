@@ -1,5 +1,5 @@
 {"version": "0.2.0", "date": "2026-10-11", "github": "", "downloadUrl": "", "files": [
-    {"name": "vyra-client-0.2.0.jar", "size": "0,0 MB", "sha256": "6e803f95684aff8349fd3334aaacf25ff2899f50bf7890e624bea339b8eac3c0"},
-    {"name": "VYRA-Client-Setup-0.2.0.exe", "size": "0,0 MB", "sha256": "1a8a26815967c1bd7279cc735ae1f9fd79f4dbf9f45c1d86c617d673107379f8"},
-    {"name": "VyraLauncher-0.2.0.exe", "size": "0,1 MB", "sha256": "8d55a1da71fae3a30f1c5f04ada4da0452a739feff3d4ad1309a5627b800c076"}
+    {"name": "vyra-client-0.2.0.jar", "size": "0,1 MB", "sha256": "4303d5b35112ef74ed6d027c226272e317a0ef1fa06b8a97ce7d15af7bc48592"},
+    {"name": "VYRA-Client-Setup-0.2.0.exe", "size": "0,0 MB", "sha256": "28901ebd36ad237e8657165fc73f3b85e6c64fd5c5a4820eed6b55a76fc999ca"},
+    {"name": "VyraLauncher-0.2.0.exe", "size": "0,1 MB", "sha256": "51663d66d1c7cb9672ec4a1a6143d9abd9146bc397cac0649bcd75a51887585e"}
 ]}

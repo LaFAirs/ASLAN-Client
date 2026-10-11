@@ -57,6 +57,13 @@ Copy-Item (Join-Path $outDir "VYRA-Client-Setup-0.2.0.exe") (Join-Path $relDir "
 if (Test-Path (Join-Path $modBuild "vyra-client-0.2.0.jar")) {
     Copy-Item (Join-Path $modBuild "vyra-client-0.2.0.jar") (Join-Path $relDir "vyra-client-0.2.0.jar") -Force
 }
+# Echter Loom-Mod (falls gebaut) ersetzt Kern-JAR als Release-Artefakt + Instanz-Mod.
+$loomJar = Join-Path $root "mods\vyra-client\build\libs\vyra-client-0.2.0.jar"
+if (Test-Path $loomJar) {
+    Copy-Item $loomJar (Join-Path $relDir "vyra-client-0.2.0.jar") -Force
+    Copy-Item $loomJar (Join-Path $outDir "vyra-client.jar") -Force
+    Write-Host "OK: Loom-Mod als Release-Artefakt uebernommen."
+}
 $shaFile = Join-Path $relDir "SHA256SUMS.txt"
 Get-ChildItem $relDir -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | ForEach-Object {
     $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash

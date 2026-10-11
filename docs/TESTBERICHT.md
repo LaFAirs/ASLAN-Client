@@ -59,6 +59,19 @@ Echtes `26.2.json` (51.781 Bytes, von Mojang) analysiert:
 * GitHub-Repo/Release/Pages: Account-Freigabe fehlt (alles vorbereitet).
 * Hardware-Benchmarks: keine Zweit-Hardware; nur echte lokale Messwerte.
 
-## 7) Loom-Build / Minecraft-Start
+## 7) Loom-Build — ERFOLGREICH (2026-10-12)
 
-Siehe `docs/INTEGRATIONSTEST.md` (wird mit Ergebnis des laufenden Build-Versuchs aktualisiert).
+* Toolchain: Gradle 9.8.1 + Java 25 (Gradle-JVM, Loom verlangt 25) + Temurin 21 (lokal für Tests).
+* Loom 1.18.4, Yarn 1.21.11+build.6, Loader 0.19.5, Fabric-API 0.141.6+1.21.11.
+* `BUILD SUCCESSFUL`: `mods/vyra-client/build/libs/vyra-client-0.2.0.jar` (53.402 Bytes, 42 Einträge,
+  inkl. `VyraClient`, `HudManager`, `VyraMainMenu`, `TitleScreenMixin`, `fabric.mod.json`, Mixins-JSON).
+* Dieses JAR ist das Release-Artefakt (`releases/`) und wird in 1.21.11-Instanzen installiert.
+* Gefixt unterwegs (alle gegen echte Yarn-Namen verifiziert): Split main/client-Sourcesets,
+  `EquipmentSlot`-Refactor, `GraphicsMode.apply`, `ParticlesMode`-Umzug, `KeyBinding.Category`,
+  Screenshot via `takeScreenshot`+`NativeImage.writeTo`.
+* Warum nicht 26.2: Fabric liefert für 26.x keine Mappings (Yarn leer, Intermediary 0.0.0-Stub).
+  Mod-Ziel daher 1.21.11 (neueste Version mit vollständigem Stack); Launcher startet 26.2 vanilla.
+
+## 8) Integrationstest (echtes Spiel)
+
+Siehe `scripts/install-integration.ps1` + `docs/INTEGRATIONSTEST.md` (Ergebnis wird eingetragen).
