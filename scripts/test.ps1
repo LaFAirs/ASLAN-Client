@@ -114,7 +114,7 @@ try {
     foreach ($n in $needJ) { if (!(Test-Path (Join-Path $mj $n))) { $allOk = $false; Write-Host ("fehlt: " + $n) } }
     if ($allOk) { Ok "fabric-quellen (14)" } else { Bad "fabric-quellen" }
     $fm = [IO.File]::ReadAllText((Join-Path $root "mods\vyra-client\src\main\resources\fabric.mod.json"))
-    if ($fm.Contains("26.2") -and $fm.Contains("0.19.5")) { Ok "fabric-meta-versionen" } else { Bad "fabric-meta-versionen" }
+    if ($fm.Contains("1.21.11") -and $fm.Contains("0.19.5")) { Ok "fabric-meta-versionen" } else { Bad "fabric-meta-versionen" }
     $hm = [IO.File]::ReadAllText((Join-Path $mj "hud\HudManager.java"))
     if ($hm.Contains("getSessionStartTime")) { Bad "fabric-kein-vanilla-api-leak" } else { Ok "fabric-kein-vanilla-api-leak" }
 } catch { Bad ("fabric: " + $_.Exception.Message) }

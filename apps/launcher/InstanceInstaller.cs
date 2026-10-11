@@ -464,12 +464,20 @@ namespace Vyra
                 EnsureFabric(p, loaderVersion, pr, ct);
             }
 
+            // VYRA-Mod nur in Instanzen ihrer Zielversion einlegen (ehrlich, kein Fake).
             try
             {
                 string selfMod = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vyra-client.jar");
-                string dest = Path.Combine(InstanceDir(p), "mods", "vyra-client.jar");
-                Directory.CreateDirectory(Path.GetDirectoryName(dest));
-                if (File.Exists(selfMod)) File.Copy(selfMod, dest, true);
+                if (File.Exists(selfMod))
+                {
+                    if (p.MinecraftVersion == MinecraftService.ModMinecraftVersion)
+                    {
+                        string dest = Path.Combine(InstanceDir(p), "mods", "vyra-client.jar");
+                        Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                        File.Copy(selfMod, dest, true);
+                    }
+                    else Logger.Info("VYRA-Mod: Instanz ist MC " + p.MinecraftVersion + ", Mod braucht " + MinecraftService.ModMinecraftVersion + " — übersprungen.");
+                }
             }
             catch (Exception ex) { Logger.Warn("Mod copy: " + ex.Message); }
 

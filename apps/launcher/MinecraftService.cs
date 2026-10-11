@@ -220,6 +220,10 @@ namespace Vyra
     {
         public const string VersionManifest = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         public const string FabricMeta = "https://meta.fabricmc.net/v2/versions/loader/";
+        // VYRA-Mod-Zielversion: neueste MC-Version mit VOLLSTAENDIGEM Fabric-Stack
+        // (Yarn-Mappings + Intermediary + Fabric-API). Stand 2026-10-12: 1.21.11.
+        // Fuer 26.x existieren Loader, aber keine Mappings (Intermediary 0.0.0-Stub).
+        public const string ModMinecraftVersion = "1.21.11";
 
         public static List<McVersionEntry> GetVersions()
         {
