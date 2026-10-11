@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dokumentation — VYRA Client</title>
+<meta name="description" content="VYRA Client Dokumentation: Installation, Anmeldung, FPS-Optimierung, Mods, Shader, Fehlerbehebung.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="nav">
+  <a class="logo" href="index.html">VYRA<span>CLIENT</span></a>
+  <nav id="navlinks"><a href="index.html">Start</a><a href="downloads.html">Downloads</a><a href="changelog.html">Changelog</a><a href="support.html">Support</a></nav>
+  <button id="burger" aria-label="Menü">☰</button>
+</header>
+<main>
+<section class="section reveal">
+<h2>Dokumentation</h2>
+
+<h3>Installation</h3>
+<ol>
+<li>Installer von <a href="downloads.html">Downloads</a> laden, SHA-256 prüfen.</li>
+<li>Installer starten — keine Adminrechte nötig, Prüfsumme wird erneut verifiziert.</li>
+<li>Der Launcher legt <code>%APPDATA%\VYRA</code> für Profile, Config, Logs und Backups an.</li>
+<li>Deinstallation: Windows-Einstellungen → Apps → VYRA Client (Registry-Eintrag vorhanden).</li>
+</ol>
+
+<h3>Anmeldung (Microsoft)</h3>
+<ol>
+<li>Im Launcher: Tab <b>Accounts</b> → eigene Azure-App-ID eintragen (siehe <code>docs/ANMELDUNG.md</code> im Repo).</li>
+<li><b>Anmelden</b> → Code im Browser unter microsoft.com/link bestätigen.</li>
+<li>Der Launcher fragt <b>nie</b> nach deinem Passwort und speichert keines. Tokens liegen nur DPAPI-geschützt (CurrentUser).</li>
+<li>Der Launcher prüft die Minecraft-Berechtigung. Ohne Berechtigung: ehrliche Fehlermeldung. Ohne Login: ehrlicher Offline-Modus.</li>
+</ol>
+
+<h3>FPS-Optimierung</h3>
+<ul>
+<li>Tab <b>Performance</b>: Hardware-Stufe ablesen, Profil wählen (LOW → MAX FPS).</li>
+<li>RAM: Empfehlung übernehmen — mehr als 6 GB schadet meist (GC-Pauses).</li>
+<li><b>Performance-Set</b> (Mods-Tab): installiert nur live-verifizierte 26.2-Mods (Sodium, Lithium, FerriteCore, ImmediatelyFast, Entity/ More Culling, Dynamic FPS, Sodium Extra, Reese's, ModMenu) — mit Bestätigung und Hash-Prüfung. ModernFix ist für 26.2 bewusst ausgenommen.</li>
+<li><b>Benchmark starten</b> misst Avg-FPS, 1%-Low, Frametimes, Spikes — nur echte Werte.</li>
+<li>Vulkan ist experimentell: bei Grafik-Crashes automatisch zurück auf OpenGL.</li>
+</ul>
+
+<h3>Mods</h3>
+<ul>
+<li>Tab <b>Mods</b>: über Modrinth suchen (Loader fabric + deine MC-Version), Treffer wählen, <b>Installieren</b> (Lizenz wird gezeigt, Abhängigkeiten automatisch, Hash-geprüft).</li>
+<li>Konfliktwarnungen ernst nehmen (z. B. Sodium + OptiFine).</li>
+<li>Absturz? Mit <b>Safe Mode</b> im Profil starten — optionale Mods werden deaktiviert, nichts gelöscht.</li>
+<li>Entfernen legt automatisch ein Backup unter <code>backups/</code> an. Profile exportierbar.</li>
+</ul>
+
+<h3>Shader</h3>
+<ul>
+<li>Iris + Sodium über Mods-Tab installieren, Shaderpacks in den <code>shaderpacks</code>-Ordner der Instanz.</li>
+<li>Shader brauchen das OpenGL-Backend. Bei Vulkan: erst Backend wechseln.</li>
+</ul>
+
+<h3>Fehlerbehebung</h3>
+<ul>
+<li>Tab <b>Logs</b>: Crash-Analyse mit Reparaturvorschlag lesen.</li>
+<li>Dashboard: <b>Prüfen</b> verifiziert Client-JAR/Libraries/Natives per Hash, <b>Reparieren</b> lädt Fehlendes nach.</li>
+<li>Kein Java? Java 21+ installieren (Launcher listet gefundene Runtimes).</li>
+<li>Login scheitert? App-ID prüfen (36 Zeichen GUID), PC-Uhrzeit prüfen.</li>
+</ul>
+
+<h3>Updates</h3>
+<ul>
+<li>Der Launcher prüft beim Start GitHub Releases (Repo im Accounts-Tab eintragen).</li>
+<li>Updates nur mit Zustimmung, Hash-geprüft, mit Rollback-Backup der alten EXE.</li>
+</ul>
+
+<h3>Datenschutz</h3>
+<p>Keine Telemetrie, keine Werbung, kein Account-Zwang außer Minecraft-Auth. Discord Presence nur per Opt-in. Alle Daten bleiben lokal unter <code>%APPDATA%\VYRA</code>, außer bei ausdrücklich gewähltem Export/Import.</p>
+</section>
+</main>
+<footer><p><a href="index.html">Start</a> · VYRA Client — unabhängiges Drittanbieterprojekt.</p></footer>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Changelog — VYRA Client</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="nav">
+  <a class="logo" href="index.html">VYRA<span>CLIENT</span></a>
+  <nav id="navlinks"><a href="index.html">Start</a><a href="downloads.html">Downloads</a><a href="docs.html">Docs</a><a href="support.html">Support</a></nav>
+  <button id="burger" aria-label="Menü">☰</button>
+</header>
+<main>
+<section class="section reveal">
+<h2>Changelog</h2>
+<div class="card">
+<h3>0.2.0 — 2026-10-12</h3>
+<ul>
+<li>Vollständige Instanz-Installation: Client-JAR, Libraries (Mojang-Regeln), Natives-Extraktion, Assets (Hash-geprüft), Logging-Config, Fabric (Loader + Intermediary + Libraries), echter Startbefehl (neu + legacy Argumentformate), Verify/Repair.</li>
+<li>Echter Windows-Installer <code>VYRA-Client-Setup-0.2.0.exe</code> (SHA-Check, HKCU-Deinstallations-Eintrag, Verknüpfungen, kein Admin).</li>
+<li>Mod-Manager: SHA-512-Prüfung, Abhängigkeitsauflösung, Lizenzanzeige, Performance-Set (nur verifizierte 26.2-Mods), Profil-Export.</li>
+<li>Crash Analyzer mit Reparaturvorschlägen, Java-Repair-Hinweise, Update-System (GitHub Releases, Hash, Rollback).</li>
+<li>Mod: Session-Timer ohne Vanilla-API-Abhängigkeit, Gradle-Wrapper-Daten, Version 0.2.0.</li>
+<li>Website mit GitHub-Release-Anbindung (release.json: github/downloadUrl), Pages-Workflow, Release-Workflow.</li>
+</ul>
+<p><b>Weiterhin offen:</b> Code-Signierung (Zertifikat fehlt — siehe docs/SIGNIERUNG.md), GitHub-Repo/Release/Pages (Account-Freigabe fehlt), MS-Login Ende-zu-Ende (App-ID + Testaccount fehlen).</p>
+</div>
+<div class="card">
+<h3>0.1.0 — 2026-10-11 (Erstveröffentlichung)</h3>
+<ul>
+<li>Windows-Launcher: Dashboard, Profile, PLAY, Mojang-Manifest, Fabric-Meta, Java-Erkennung, Modrinth-Manager, Shader, Performance-Profile, Device-Code-Login, Safe Mode, Logs.</li>
+<li>Fabric-Mod 0.1.0: Hauptmenü, HUD-System, HUD-Editor, Quick Settings, Performance, Benchmark, Screenshot-Studio, Sync, Suche, Safe Mode.</li>
+<li>Website statisch + Next.js-Quellen, Tests (Launcher 13, Mod 15 Prüfungen).</li>
+</ul>
+</div>
+</section>
+</main>
+<footer><p><a href="index.html">Start</a> · VYRA Client — unabhängiges Drittanbieterprojekt.</p></footer>
+<script src="app.js"></script>
+</body>
+</html>

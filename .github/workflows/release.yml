@@ -1,0 +1,46 @@
+name: vyra-release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+      - name: Test all (release gate)
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File scripts/test.ps1
+      - name: Sign (only with configured certificate)
+        shell: pwsh
+        run: |
+          if ("${{ secrets.VYRA_PFX_BASE64 }}" -eq "") {
+            echo "No signing certificate configured — shipping unsigned (honest, see docs/SIGNIERUNG.md)."
+          } else {
+            [IO.File]::WriteAllBytes("vyra.pfx", [Convert]::FromBase64String("${{ secrets.VYRA_PFX_BASE64 }}"))
+            & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /f vyra.pfx /p "${{ secrets.VYRA_PFX_PASSWORD }}" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 releases/VYRA-Client-Setup-*.exe releases/VyraLauncher-*.exe
+            & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" verify /pa releases/VYRA-Client-Setup-*.exe
+            Remove-Item vyra.pfx -Force
+          }
+      - name: Refresh SHA256 + website data
+        shell: pwsh
+        run: |
+          Get-ChildItem releases -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | ForEach-Object { "{0}  {1}" -f ((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name) } | Set-Content releases/SHA256SUMS.txt -Encoding ASCII
+          powershell -ExecutionPolicy Bypass -File scripts/sync-website.ps1
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            releases/VYRA-Client-Setup-*.exe
+            releases/VyraLauncher-*.exe
+            releases/vyra-client-*.jar
+            releases/SHA256SUMS.txt
+            releases/RELEASE-NOTES-*.md
+          body_path: releases/RELEASE-NOTES-0.2.0.md

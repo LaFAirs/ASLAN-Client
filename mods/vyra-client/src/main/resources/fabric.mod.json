@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "vyra-client",
+  "version": "0.2.0",
+  "name": "VYRA Client",
+  "description": "Next-gen Minecraft performance, customization and smooth gameplay. Independent third-party project, not affiliated with Mojang or Microsoft. No cheats.",
+  "authors": ["VYRA Team"],
+  "license": "MIT",
+  "icon": "assets/vyra-client/icon.png",
+  "contact": {
+    "homepage": "https://github.com/OWNER/VYRA-Client",
+    "issues": "https://github.com/OWNER/VYRA-Client/issues"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": ["gg.vyra.client.VyraClient"]
+  },
+  "mixins": ["vyra-client.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "minecraft": "~26.2",
+    "java": ">=21"
+  }
+}

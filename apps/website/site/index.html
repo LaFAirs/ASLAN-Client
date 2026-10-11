@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VYRA Client — Your Minecraft. Your Performance. Your Rules.</title>
+<meta name="description" content="VYRA Client: die nächste Generation Minecraft-Performance, Customization und butterweiches Gameplay. Unabhängiges Drittanbieterprojekt.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="nav">
+  <a class="logo" href="index.html">VYRA<span>CLIENT</span></a>
+  <nav id="navlinks">
+    <a href="#performance">Performance</a>
+    <a href="#custom">Customization</a>
+    <a href="#mods">Mods</a>
+    <a href="#shader">Shader</a>
+    <a href="downloads.html">Downloads</a>
+    <a href="docs.html">Docs</a>
+    <a href="changelog.html">Changelog</a>
+    <a href="support.html">Support</a>
+  </nav>
+  <button id="burger" aria-label="Menü">☰</button>
+</header>
+
+<main>
+<section class="hero reveal">
+  <h1>VYRA CLIENT</h1>
+  <p class="sub">Your Minecraft. Your Performance. Your Rules.</p>
+  <p class="tag">The next generation of Minecraft performance, customization and smooth gameplay.</p>
+  <div class="cta">
+    <a class="btn primary" href="downloads.html">Download for Windows</a>
+    <a class="btn ghost" href="#performance">Explore Features</a>
+  </div>
+  <div class="preview card">
+    <div class="preview-bar"><span></span><span></span><span></span></div>
+    <div class="preview-body">
+      <div class="playrow"><div class="bigplay">▶ PLAY</div><div class="meta">MC 26.2 · Fabric 0.19.5 · <span id="hero-fps">— FPS</span></div></div>
+      <div class="widgets"><span>FPS 240</span><span>Ping 18</span><span>CPS 9</span><span>XYZ 120 / 64 / -40</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="performance" class="section reveal">
+  <h2>Performance Engine</h2>
+  <p>Hardware-Erkennung (CPU, GPU, RAM), vier Profile — <b>MAX FPS</b>, <b>BALANCED</b>, <b>QUALITY</b>, <b>CUSTOM</b> — echte Benchmarks (Avg-FPS, 1%-Lows, Frametimes, Spikes) und ein Optimizer, der jede Empfehlung begründet und nur mit Zustimmung ändert.</p>
+  <div class="grid">
+    <div class="card"><h3>MAX FPS</h3><p>Minimale Effekte, maximale Spielperformance. Für schwache Hardware und PvP.</p></div>
+    <div class="card"><h3>BALANCED</h3><p>Gute Grafik mit hoher, stabiler Framerate. Die Empfehlung für die meisten.</p></div>
+    <div class="card"><h3>QUALITY</h3><p>Schöne Grafik, Animationen, optionale Shader — mit Performance-Einschätzung.</p></div>
+    <div class="card"><h3>Benchmarks</h3><p>Nur gemessene Werte. Keine erfundenen FPS-Versprechen — siehe <a href="changelog.html">Changelog</a>.</p></div>
+  </div>
+</section>
+
+<section id="custom" class="section reveal">
+  <h2>Customization</h2>
+  <p>Eigenes Hauptmenü, HUD-Editor mit Drag-and-Drop, Raster-Snap und Profilen (PvP / Survival / Creative), Quick Settings per Tastendruck, Themes und optionale Cosmetics — alles deaktivierbar.</p>
+</section>
+
+<section id="mods" class="section reveal">
+  <h2>Mods</h2>
+  <p>Echter Mod-Manager auf Basis der offiziellen Modrinth-API: suchen, installieren, aktivieren, updaten, entfernen — mit SHA-512-Prüfung, Abhängigkeitsauflösung, Konfliktprüfung, Presets und Safe Mode bei Abstürzen.</p>
+</section>
+
+<section id="shader" class="section reveal">
+  <h2>Shader</h2>
+  <p>Eigener Shader-Bereich mit Kompatibilitätsprüfung (OpenGL/Vulkan), verständlichen Fehlermeldungen und schnellem Wechsel zwischen Performance- und Quality-Profilen.</p>
+</section>
+
+<section class="section reveal">
+  <h2>Bereit?</h2>
+  <div class="cta"><a class="btn primary" href="downloads.html">Download for Windows</a></div>
+  <p id="github-link" class="tag"></p>
+</section>
+</main>
+
+<footer>
+  <p>VYRA Client ist ein unabhängiges Drittanbieterprojekt und steht in keiner Verbindung zu Mojang oder Microsoft. Minecraft ist eine Marke von Mojang Synergies AB.</p>
+  <p><a href="support.html">Support</a> · <a href="docs.html">Datenschutz (Docs)</a> · <a href="changelog.html">Changelog</a> · <a href="downloads.html">Downloads</a></p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

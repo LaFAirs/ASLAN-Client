@@ -1,0 +1,68 @@
+name: vyra-build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  launcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build launcher + setup (csc, no extra tools)
+        shell: pwsh
+        run: |
+          $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+          $files = Get-ChildItem apps/launcher -Filter *.cs | Where-Object { $_.Name -ne "VyraSetup.cs" } | ForEach-Object { $_.FullName }
+          $refs = @("System.dll","System.Core.dll","System.Drawing.dll","System.Windows.Forms.dll","System.Management.dll","System.Security.dll")
+          $refArgs = $refs | ForEach-Object { "/reference:$_" }
+          & $csc "/target:winexe" "/out:apps/launcher/VyraLauncher.exe" $refArgs $files
+          & $csc "/target:winexe" "/out:apps/launcher/VYRA-Client-Setup-0.2.0.exe" $refArgs apps/launcher/VyraSetup.cs
+      - name: Self-test (in-memory, no AV trip)
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File scripts/test.ps1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyra-launcher-0.2.0
+          path: |
+            releases/VyraLauncher-0.2.0.exe
+            releases/VYRA-Client-Setup-0.2.0.exe
+
+  mod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: "21"
+      - name: Validate mod metadata
+        run: |
+          python3 -c "import json; d=json.load(open('mods/vyra-client/src/main/resources/fabric.mod.json')); assert d['id']=='vyra-client', d; assert '26.2' in d['depends']['minecraft'], d['depends']; print('fabric.mod.json OK')"
+          test -f mods/vyra-client/src/main/resources/vyra-client.json && echo "mixins OK"
+      - name: Build Fabric mod (Loom)
+        working-directory: mods/vyra-client
+        run: |
+          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then ./gradlew --no-daemon build; else echo "No wrapper jar yet — run 'gradle wrapper' once and commit it."; exit 1; fi
+      - name: Upload mod
+        uses: actions/upload-artifact@v4
+        with:
+          name: vyra-client-mod
+          path: mods/vyra-client/build/libs/*.jar
+
+  website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build Next.js site
+        working-directory: apps/website/next-src
+        run: npm ci && npm run build
+      - name: Check static site
+        run: |
+          test -f apps/website/site/index.html && echo "static site OK"
+          python3 -c "import json; d=json.load(open('apps/website/site/release.json')); print('release.json OK', d['version'])"

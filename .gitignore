@@ -1,0 +1,40 @@
+# Build-Artefakte und lokale Daten — niemals committen.
+apps/launcher/VyraLauncher.exe
+apps/launcher/vyra-client.jar
+apps/launcher/*.log
+mods/vyra-client/build/
+mods/vyra-client/.gradle/
+releases/*.exe
+releases/*.jar
+releases/*.ps1
+!releases/RELEASE-NOTES-*.md
+!releases/SHA256SUMS.txt
+# Geheimnisse und lokale Benutzerdaten
+**/ms_client.txt
+**/ms_token.dat
+**/ms_refresh.dat
+**/mc_token.dat
+**/ms_profile.json
+**/vyra.json
+**/tokens.dat
+*.pfx
+*.p12
+*.key
+*.jks
+# OS / Editor
+Thumbs.db
+Desktop.ini
+.vs/
+.idea/
+*.user
+# Node / Next
+apps/website/next-src/node_modules/
+apps/website/next-src/.next/
+apps/website/next-src/out/
+# Java / Gradle
+*.class
+.gradle/
+local.properties
+
+apps/launcher/*.exe
+mods/vyra-client/build-log.txt

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support — VYRA Client</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="nav">
+  <a class="logo" href="index.html">VYRA<span>CLIENT</span></a>
+  <nav id="navlinks"><a href="index.html">Start</a><a href="downloads.html">Downloads</a><a href="docs.html">Docs</a><a href="changelog.html">Changelog</a></nav>
+  <button id="burger" aria-label="Menü">☰</button>
+</header>
+<main>
+<section class="section reveal">
+<h2>Support</h2>
+<div class="card">
+<h3>Häufige Fragen</h3>
+<p><b>Ist VYRA ein Cheat-Client?</b> Nein. Keine Aim-Assists, KillAuras oder X-Ray — nur HUD, Menüs und Optimierung.</p>
+<p><b>Sehen andere Spieler meine Cosmetics?</b> Nur wenn sie denselben Client nutzen. Rein visuell, deaktivierbar.</p>
+<p><b>Warum warnt mein Antivirus?</b> Frische, unsignierte Builds werden oft heuristisch erkannt. Prüfe die SHA-256 aus <a href="downloads.html">Downloads</a>. Nach der Code-Signierung (siehe Changelog) entfällt das. Details: <code>docs/SIGNIERUNG.md</code> im Repo.</p>
+<p><b>Welche Minecraft-Versionen?</b> Primär 26.2 (Fabric 0.19.5, Java 21+). Weitere Versionen wählbar, sofern Mojang-Manifest und Fabric-Meta sie führen.</p>
+</div>
+<div class="card">
+<h3>Fehler melden</h3>
+<p>Lege ein Issue an: <code>https://github.com/OWNER/VYRA-Client/issues</code> — mit <code>%APPDATA%\VYRA\logs\</code>-Auszug, Profil (MC/Loader/RAM) und Schritten zur Reproduktion. (OWNER nach Repo-Erstellung ersetzen.)</p>
+</div>
+<div class="card">
+<h3>Impressum / Rechtliches</h3>
+<p>Privates, nicht-kommerzielles Community-Projekt. Verantwortlich: siehe Repo (<code>docs/RECHTLICHES.md</code>). Keine Verbindung zu Mojang AB / Microsoft. Bei Marken- oder Lizenzfragen: Issue mit Label „legal“.</p>
+</div>
+</section>
+</main>
+<footer><p><a href="index.html">Start</a> · VYRA Client — unabhängiges Drittanbieterprojekt.</p></footer>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Downloads — VYRA Client</title>
+<meta name="description" content="VYRA Client Downloads für Windows mit Version, Datum, Größe und SHA-256-Prüfsumme.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<header class="nav">
+  <a class="logo" href="index.html">VYRA<span>CLIENT</span></a>
+  <nav id="navlinks"><a href="index.html">Start</a><a href="docs.html">Docs</a><a href="changelog.html">Changelog</a><a href="support.html">Support</a></nav>
+  <button id="burger" aria-label="Menü">☰</button>
+</header>
+<main>
+<section class="section reveal">
+  <h2>Downloads</h2>
+  <p id="github-version" class="tag"></p>
+  <div class="cta"><a id="github-download" class="btn primary" href="#" style="display:none">Download for Windows (GitHub Release)</a></div>
+  <p>Nur echte, vorhandene Builds. Prüfe nach dem Download die SHA-256-Summe (siehe <code>releases/SHA256SUMS.txt</code> bzw. GitHub Release).</p>
+  <table>
+    <thead><tr><th>Datei</th><th>Version</th><th>Datum</th><th>OS</th><th>Größe</th><th>SHA-256</th></tr></thead>
+    <tbody id="release-table"><tr><td colspan="6">Lade Release-Daten …</td></tr></tbody>
+  </table>
+  <h3>Prüfsummen</h3>
+  <pre class="card"><code id="release-sha">…</code></pre>
+  <h3>Installation</h3>
+  <ol>
+    <li>Installer laden und SHA-256 prüfen.</li>
+    <li>Installer starten (kein Admin nötig) — er prüft die Prüfsumme erneut und legt Desktop-/Startmenü-Verknüpfung an.</li>
+    <li>Im Launcher: Java prüfen lassen, Profil wählen, PLAY drücken.</li>
+    <li>Details: <a href="docs.html">Dokumentation</a>.</li>
+  </ol>
+  <p class="card"><b>Hinweis:</b> Es werden keine Minecraft-Spieldateien mitgeliefert. Der Launcher lädt sie beim ersten Start Hash-geprüft von offiziellen Mojang-Quellen. Ein Minecraft-Account mit Java-Berechtigung ist erforderlich.</p>
+</section>
+</main>
+<footer><p><a href="index.html">Start</a> · VYRA Client — unabhängiges Drittanbieterprojekt, nicht von Mojang/Microsoft.</p></footer>
+<script src="app.js"></script>
+</body>
+</html>
