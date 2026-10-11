@@ -35,7 +35,8 @@ ist echt (Bytes, Dateien, Prozess-Events).
 
 ## Fabric-Mod (`mods/vyra-client`, Java 21)
 
-Ziel: Minecraft 26.2, Fabric Loader 0.19.5, Fabric API. Aufbau:
+Ziel: **Minecraft 1.21.11**, Fabric Loader 0.19.5, Fabric API, Yarn-Mappings.
+(Begründung: neueste MC-Version mit vollständigem Fabric-Stack; siehe `docs/TESTBERICHT.md`.)
 
 * `gg.vyra.client.VyraClient` — ClientModInitializer, registriert HUD, Menü,
   Quick Settings, Keybindings.

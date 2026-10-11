@@ -40,7 +40,9 @@ implementiert und per `scripts/test.ps1` verifiziert. Details: `docs/TESTBERICHT
 ## Versionen
 
 * Aktuell: **0.2.0** (siehe `CHANGELOG.md`, `releases/RELEASE-NOTES-0.2.0.md`)
-* Minecraft: 26.2 (Fabric Loader 0.19.5, Java 21+) — live gegen Mojang-/Fabric-Meta verifiziert
+* Launcher: Minecraft 26.2 startklar (Mojang-Pipeline live-verifiziert) + alle Manifest-Versionen
+* VYRA-Mod: **1.21.11** — neueste Version mit vollständigem Fabric-Stack (Yarn + Intermediary + Fabric-API).
+  Für 26.x liefert Fabric (Loader 0.19.5) noch keine Mappings (Intermediary 0.0.0-Stub) — Mod-Port folgt, sobald Yarn 26.x erscheint.
 
 ## Rechtliches
 
