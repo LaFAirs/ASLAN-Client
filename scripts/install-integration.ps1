@@ -57,8 +57,10 @@ try {
     }
 } catch { Bad ("fabric-api: " + $_.Exception.Message) }
 
-# --- 5) VYRA-Loom-JAR in Instanz? ---
+# --- 5) VYRA-Loom-JAR in Instanz (explizit, da Test-Harness kein Launcher-Verzeichnis hat) ---
 $instMods = Join-Path ([Vyra.InstanceInstaller]::InstanceDir($g)) "mods"
+$loomJar = Join-Path $root "mods\vyra-client\build\libs\vyra-client-0.2.0.jar"
+if (Test-Path $loomJar) { Copy-Item $loomJar (Join-Path $instMods "vyra-client.jar") -Force }
 $vyraJar = Get-ChildItem $instMods -Filter "vyra-client*.jar" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($vyraJar -ne $null) { Ok ("vyra-mod-in-instanz (" + $vyraJar.Name + ", " + $vyraJar.Length + " Bytes)") } else { Bad "vyra-mod-fehlt" }
 

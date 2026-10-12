@@ -585,6 +585,7 @@ namespace Vyra
             if (imMaven != null) allLibObjs.Add("{\"name\":\"" + imMaven + "\"}");
 
             if (pr != null) pr.TotalFiles += allLibObjs.Count;
+            List<string> downloaded = new List<string>();
             for (int i = 0; i < allLibObjs.Count; i++)
             {
                 ThrowIfCancel(pr);
@@ -597,7 +598,11 @@ namespace Vyra
                 if (!File.Exists(dest) || new FileInfo(dest).Length < 1000)
                     Dl(url + rel, dest, pr, ct);
                 else if (pr != null) pr.DoneFiles++;
+                downloaded.Add(dest);
             }
+            // Manifest aller Fabric-JARs (Loader + Deps + Intermediary) für den Classpath.
+            try { File.WriteAllLines(Path.Combine(InstanceDir(p), "fabric-classpath.txt"), downloaded.ToArray(), Encoding.UTF8); }
+            catch { }
         }
 
         public static List<string> Verify(GameProfile p)
@@ -669,12 +674,25 @@ namespace Vyra
             }
             try
             {
-                string[] jars = Directory.GetFiles(VyraPaths.LibrariesDir, "*.jar", SearchOption.AllDirectories);
-                for (int i = 0; i < jars.Length; i++)
+                string mf = Path.Combine(instDir, "fabric-classpath.txt");
+                if (File.Exists(mf))
                 {
-                    string n = jars[i].ToLowerInvariant();
-                    if ((n.Contains("fabric-loader") || n.Contains("intermediary")) && cp.IndexOf(jars[i]) < 0)
-                        cp.Add(jars[i]);
+                    string[] lines = File.ReadAllLines(mf, Encoding.UTF8);
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        string f = lines[i].Trim();
+                        if (f.Length > 0 && File.Exists(f) && cp.IndexOf(f) < 0) cp.Add(f);
+                    }
+                }
+                else
+                {
+                    string[] jars = Directory.GetFiles(VyraPaths.LibrariesDir, "*.jar", SearchOption.AllDirectories);
+                    for (int i = 0; i < jars.Length; i++)
+                    {
+                        string n = jars[i].ToLowerInvariant();
+                        if ((n.Contains("fabric-loader") || n.Contains("intermediary")) && cp.IndexOf(jars[i]) < 0)
+                            cp.Add(jars[i]);
+                    }
                 }
             }
             catch { }

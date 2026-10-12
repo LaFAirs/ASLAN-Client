@@ -1,0 +1,3 @@
+﻿Exception in thread "main" java.lang.ExceptionInInitializerError
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)
+
