@@ -1,31 +1,41 @@
-# ASLAN CLIENT 0.3.0 — Abschlussbericht (2026-10-12)
+# ASLAN CLIENT 0.3.0 — Abschlussbericht (2026-10-12, final)
 
-## Produkt
+## 1. GitHub-Repository ✅
 
-Schwarz-goldener Premium-Launcher (Sidebar, Hero, Gold-PLAY, Animationen),
-5 Loader (Vanilla/Fabric/Quilt automatisch, Forge/NeoForge assistiert),
-Modrinth- + CurseForge-Stores, Modpacks (.mrpack/CF-Import), Shader-/Resourcepack-Stores,
-Download-Manager, Multi-Account, Performance-Center, Einstellungen, Website im selben Design.
+**https://github.com/LaFAirs/ASLAN-Client** (öffentlich, Commits + Tag `v0.3.0`).
 
-## Code
+## 2. Website ✅
 
-`Documents\Standardprojekt\VYRA-Client\` — commits auf main, Tag `v0.3.0` folgt dem Push.
-Migration VYRA→ASLAN automatisch (kopierend).
+**https://lafairs.github.io/ASLAN-Client/** (HTTPS, GitHub Pages, verifiziert:
+Titel + Slogan + release.json live).
 
-## Nachweise (alle tatsächlich ausgeführt)
+## 3. Download ✅
 
-* `scripts/test.ps1`: 0 Fehler (20 Launcher- + 15 Mod-Prüfungen + Artefakt/Website/CI-Checks).
-* `scripts/install-integration.ps1`: 0 Fehler (10 Prüfungen, echtes Spiel mit ASLAN-Mod).
-* Loom: `BUILD SUCCESSFUL` (aslan-client-0.3.0.jar).
-* Artefakte: `releases/` (Setup, Launcher, Mod, SHA256SUMS) + `release.json`.
+**https://github.com/LaFAirs/ASLAN-Client/releases/download/v0.3.0/ASLAN-Client-Setup-0.3.0.exe**
+(HTTP 200, 9.728 Bytes, SHA-256 in `SHA256SUMS.txt`).
+Release `v0.3.0` enthält Setup, Launcher, Mod-JAR, SHA, Release Notes.
 
-## Offen (braucht dich)
+## 4. Minecraft-Mod ✅
 
-1. GitHub: `gh auth login` + Push (`docs/GITHUB.md` anpassen: ASLAN-Client) → Release/Pages/Download-Button automatisch.
-2. Signatur: Zertifikat fehlt (`docs/SIGNIERUNG.md`).
-3. CurseForge-Key + MS-App-ID: nutzerseitig eintragen.
-4. 26.x-Mod-Mappings: Fabric-seitig fehlend (Mod-Ziel 1.21.11).
+`releases/aslan-client-0.3.0.jar` — Loom `BUILD SUCCESSFUL` (lokal + CI),
+im echten Spiel geladen (`[ASLAN] Bereit`, 240 s stabil).
 
-## Start
+## 5. Digitale Signatur — OFFEN
 
-`releases\ASLAN-Client-Setup-0.3.0.exe` (SHA prüfen) → Profil wählen → PLAY.
+Kein Zertifikat. Workflow + Anleitung bereit (`docs/SIGNIERUNG.md`, Secrets `ASLAN_PFX_*`).
+Bis dahin: SHA-256 vergleichen.
+
+## 6. Tests (alle tatsächlich ausgeführt)
+
+* Lokal `test.ps1`: 0 Fehler. `install-integration.ps1`: 0 Fehler (10 Checks, echtes Spiel).
+* CI `aslan-build`: SUCCESS (Launcher, Mod-Loom, Website). `aslan-release`: SUCCESS (Release publiziert).
+
+## 7. Verbleibend (nutzerseitig)
+
+* Signatur-Zertifikat, CurseForge-Key, MS-App-ID (alles implementiert, wartet auf Daten).
+* 26.x-Mod-Mappings (Fabric-seitig), optische Kontrolle im Spiel.
+
+## 8. Installation
+
+1. Website → Download for Windows (echter Installer).
+2. Installieren (kein Admin), Profil wählen (1.21.11 + Fabric für ASLAN-Mod), PLAY.
