@@ -10,6 +10,10 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
       - name: Build launcher + setup (csc, no extra tools)
         shell: pwsh
         run: |
@@ -20,6 +24,23 @@ jobs:
           $refArgs = $refs | ForEach-Object { "/reference:$_" }
           & $csc "/target:winexe" ("/out:" + (Join-Path $root "apps/launcher/AslanLauncher.exe")) $refArgs $files
           & $csc "/target:winexe" ("/out:" + (Join-Path $root "apps/launcher/ASLAN-Client-Setup-0.3.0.exe")) $refArgs (Join-Path $root "apps/launcher/AslanSetup.cs")
+      - name: Compile mod core (javac)
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $classes = Join-Path $root "mods/aslan-client/build/classes"
+          New-Item -ItemType Directory -Force -Path $classes | Out-Null
+          $core = Get-ChildItem (Join-Path $root "mods/aslan-client/src/main/java/gg/aslan/client/core") -Filter *.java | ForEach-Object { $_.FullName }
+          & javac -encoding UTF-8 -d $classes $core
+          Copy-Item (Join-Path $root "mods/aslan-client/src/main/resources/fabric.mod.json") (Join-Path $classes "fabric.mod.json") -Force
+      - name: Stage release files
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          New-Item -ItemType Directory -Force -Path (Join-Path $root "releases") | Out-Null
+          Copy-Item (Join-Path $root "apps/launcher/AslanLauncher.exe") (Join-Path $root "releases/AslanLauncher-0.3.0.exe") -Force
+          Copy-Item (Join-Path $root "apps/launcher/ASLAN-Client-Setup-0.3.0.exe") (Join-Path $root "releases/ASLAN-Client-Setup-0.3.0.exe") -Force
+          Get-ChildItem (Join-Path $root "releases") -File | Where-Object { $_.Name -ne "SHA256SUMS.txt" } | ForEach-Object { "{0}  {1}" -f ((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name) } | Set-Content (Join-Path $root "releases/SHA256SUMS.txt") -Encoding ASCII
       - name: Self-test (in-memory, no AV trip)
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File scripts/test.ps1
@@ -49,9 +70,8 @@ jobs:
           test -f mods/aslan-client/src/main/resources/aslan-client.json && echo "mixins OK"
       - name: Build Fabric mod (Loom, Gradle on 25)
         working-directory: mods/aslan-client
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME_25_X64 }}
         run: |
+          chmod +x gradlew
           ./gradlew --no-daemon build
       - name: Upload mod
         uses: actions/upload-artifact@v4
