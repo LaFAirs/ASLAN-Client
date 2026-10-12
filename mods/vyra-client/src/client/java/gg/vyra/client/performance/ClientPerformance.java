@@ -61,15 +61,10 @@ public final class ClientPerformance {
     private PerformanceEngine.Tier estimateTier() {
         int cores = Runtime.getRuntime().availableProcessors();
         long totalMB = Runtime.getRuntime().maxMemory() / 1048576L;
-        String gpu = "";
-        try {
-            gpu = org.lwjgl.opengl.GL11.glGetString(org.lwjgl.opengl.GL11.GL_RENDERER);
-            if (gpu == null) gpu = "";
-        } catch (Throwable ignored) {
-        }
-        String g = gpu.toLowerCase();
-        boolean weak = g.contains("intel") || g.contains("uhd") || g.contains("vega 3");
-        return PerformanceEngine.tier(cores, totalMB, weak);
+        // WICHTIG: kein GL11-Zugriff hier — beim Mod-Init existiert noch kein
+        // OpenGL-Kontext; das crasht nativ (EXCEPTION_ACCESS_VIOLATION).
+        // GPU-Schwaeche wird daher konservativ nicht angenommen (false).
+        return PerformanceEngine.tier(cores, totalMB, false);
     }
 
     private File file() {

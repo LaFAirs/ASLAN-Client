@@ -92,6 +92,11 @@ try {
     if (!$exited) { Write-Host "Timeout 240 s - Prozess wird beendet."; try { $proc.Kill() } catch { } }
     Start-Sleep 2
     $log = $out.ToString()
+    # Konsole ist verzoegert/unvollstaendig -> massgeblich ist logs/latest.log der Instanz.
+    try {
+        $ll = Join-Path ([Vyra.InstanceInstaller]::InstanceDir($g)) "logs\latest.log"
+        if (Test-Path $ll) { $log = [IO.File]::ReadAllText($ll) }
+    } catch { }
     $log | Out-File (Join-Path $root "tests\integration-log.txt") -Encoding UTF8
     if ($log.Contains("[VYRA]")) { Ok "vyra-mod-geladen" } else { Bad "vyra-marker-fehlt" }
     if ($log -match "Minecraft 1.21.11|Setting user|Backend library") { Ok "mc-startet" } else { Bad "mc-start-fehlt" }
