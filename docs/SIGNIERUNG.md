@@ -21,7 +21,7 @@
 ## Vorbereiteter Workflow (CI)
 
 `.github/workflows/release.yml` enthält einen `sign`-Job (Platzhalter):
-* Erwartet Secret `VYRA_PFX_BASE64` (Zertifikat) + `VYRA_PFX_PASSWORD`.
+* Erwartet Secret `ASLAN_PFX_BASE64` (Zertifikat) + `ASLAN_PFX_PASSWORD`.
 * Führt `signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256` aus
   und verifiziert mit `signtool verify /pa`.
 * Ohne Secrets wird der Job übersprungen (Build bleibt unsigniert, aber ehrlich).
