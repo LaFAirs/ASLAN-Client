@@ -27,11 +27,14 @@ jobs:
       - name: Compile mod core (javac)
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           $root = $env:GITHUB_WORKSPACE
           $classes = Join-Path $root "mods/aslan-client/build/classes"
           New-Item -ItemType Directory -Force -Path $classes | Out-Null
           $core = Get-ChildItem (Join-Path $root "mods/aslan-client/src/main/java/gg/aslan/client/core") -Filter *.java | ForEach-Object { $_.FullName }
+          if ($core.Count -eq 0) { throw "Keine Core-Quellen gefunden." }
           & javac -encoding UTF-8 -d $classes $core
+          if ($LASTEXITCODE -ne 0) { throw "javac fehlgeschlagen." }
           Copy-Item (Join-Path $root "mods/aslan-client/src/main/resources/fabric.mod.json") (Join-Path $classes "fabric.mod.json") -Force
       - name: Stage release files
         shell: pwsh

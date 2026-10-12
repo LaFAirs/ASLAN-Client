@@ -49,10 +49,15 @@ try {
     Ok "setup-compile"
 } catch { Bad ("setup-compile: " + $_.Exception.Message) }
 
-# --- 2) Mod-Kernlogik per java ---
+# --- 2) Mod-Kernlogik per java (JDK-Pfad flexibel: lokal PrismLauncher, CI JAVA_HOME/PATH) ---
 try {
-    $javaBin = Join-Path $env:APPDATA "PrismLauncher\java\java-runtime-epsilon\bin"
-    $java = Join-Path $javaBin "java.exe"
+    $java = $null
+    $candJava = Join-Path $env:APPDATA "PrismLauncher\java\java-runtime-epsilon\bin\java.exe"
+    if (Test-Path $candJava) { $java = $candJava }
+    elseif ($env:JAVA_HOME -ne $null -and (Test-Path (Join-Path $env:JAVA_HOME "bin\java.exe"))) { $java = Join-Path $env:JAVA_HOME "bin\java.exe" }
+    else {
+        try { $w = (& where.exe java 2>$null | Select-Object -First 1); if ($w -ne $null -and (Test-Path $w)) { $java = $w } } catch { }
+    }
     $classes = $null
     foreach ($cand in @((Join-Path $root "mods\aslan-client\build\classes"), (Join-Path $root "mods\vyra-client\build\classes"))) {
         if (Test-Path $cand) { $classes = $cand }
