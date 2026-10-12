@@ -22,10 +22,20 @@ Write-Host "OK: AslanLauncher.exe"
 if ($LASTEXITCODE -ne 0) { throw "Setup-Kompilierung fehlgeschlagen." }
 Write-Host "OK: ASLAN-Client-Setup-0.3.0.exe"
 
-# --- 3) Mod-Kernlogik kompilieren + JAR bauen ---
-$javaHome = Join-Path $env:APPDATA "PrismLauncher\java\java-runtime-epsilon\bin"
-$javac = Join-Path $javaHome "javac.exe"
-$jarTool = Join-Path $javaHome "jar.exe"
+# --- 3) Mod-Kernlogik kompilieren + JAR bauen (JDK flexibel: lokal PrismLauncher, CI JAVA_HOME/PATH) ---
+$javac = $null
+$jarTool = $null
+$phHome = Join-Path $env:APPDATA "PrismLauncher\java\java-runtime-epsilon\bin"
+if (Test-Path (Join-Path $phHome "javac.exe")) { $javac = Join-Path $phHome "javac.exe"; $jarTool = Join-Path $phHome "jar.exe" }
+elseif ($env:JAVA_HOME -ne $null -and (Test-Path (Join-Path $env:JAVA_HOME "bin\javac.exe"))) { $javac = Join-Path $env:JAVA_HOME "bin\javac.exe"; $jarTool = Join-Path $env:JAVA_HOME "bin\jar.exe" }
+else {
+    try {
+        $wj = (& where.exe javac 2>$null | Select-Object -First 1)
+        if ($wj -ne $null -and (Test-Path $wj)) { $javac = $wj; $jarTool = Join-Path (Split-Path $wj) "jar.exe" }
+        $wr = (& where.exe jar 2>$null | Select-Object -First 1)
+        if ($wr -ne $null -and (Test-Path $wr)) { $jarTool = $wr }
+    } catch { }
+}
 $modSrc = Join-Path $root "mods\vyra-client\src\main\java"
 if (!(Test-Path $modSrc)) { $modSrc = Join-Path $root "mods\aslan-client\src\main\java" }
 $modBuild = Join-Path $root "mods\vyra-client\build"
