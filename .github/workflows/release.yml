@@ -1,4 +1,4 @@
-name: vyra-release
+name: aslan-release
 
 on:
   push:

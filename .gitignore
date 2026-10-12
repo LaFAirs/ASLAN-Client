@@ -1,6 +1,6 @@
 # Build-Artefakte und lokale Daten — niemals committen.
-apps/launcher/VyraLauncher.exe
-apps/launcher/vyra-client.jar
+apps/launcher/AslanLauncher.exe
+apps/launcher/aslan-client.jar
 apps/launcher/*.log
 mods/vyra-client/build/
 mods/vyra-client/.gradle/

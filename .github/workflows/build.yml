@@ -13,12 +13,13 @@ jobs:
       - name: Build launcher + setup (csc, no extra tools)
         shell: pwsh
         run: |
+          $root = $env:GITHUB_WORKSPACE
           $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-          $files = Get-ChildItem apps/launcher -Filter *.cs | Where-Object { $_.Name -ne "AslanSetup.cs" } | ForEach-Object { $_.FullName }
+          $files = Get-ChildItem (Join-Path $root "apps/launcher") -Filter *.cs | Where-Object { $_.Name -ne "AslanSetup.cs" } | ForEach-Object { $_.FullName }
           $refs = @("System.dll","System.Core.dll","System.Drawing.dll","System.Windows.Forms.dll","System.Management.dll","System.Security.dll","System.IO.Compression.dll","System.IO.Compression.FileSystem.dll","System.Xml.dll")
           $refArgs = $refs | ForEach-Object { "/reference:$_" }
-          & $csc "/target:winexe" "/out:apps/launcher/AslanLauncher.exe" $refArgs $files
-          & $csc "/target:winexe" "/out:apps/launcher/ASLAN-Client-Setup-0.3.0.exe" $refArgs apps/launcher/AslanSetup.cs
+          & $csc "/target:winexe" ("/out:" + (Join-Path $root "apps/launcher/AslanLauncher.exe")) $refArgs $files
+          & $csc "/target:winexe" ("/out:" + (Join-Path $root "apps/launcher/ASLAN-Client-Setup-0.3.0.exe")) $refArgs (Join-Path $root "apps/launcher/AslanSetup.cs")
       - name: Self-test (in-memory, no AV trip)
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File scripts/test.ps1
@@ -67,7 +68,7 @@ jobs:
           node-version: "20"
       - name: Build Next.js site
         working-directory: apps/website/next-src
-        run: npm ci && npm run build
+        run: npm install --no-audit --no-fund && npm run build
       - name: Check static site
         run: |
           test -f apps/website/site/index.html && echo "static site OK"
