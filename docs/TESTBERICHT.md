@@ -1,77 +1,36 @@
-# VYRA Testbericht 0.2.0 (2026-10-12)
+# ASLAN Testbericht 0.3.0 (2026-10-12)
 
-Alle Ergebnisse sind auf diesem Rechner tatsächlich ausgeführt, nicht erfunden.
-Befehl: `powershell -ExecutionPolicy Bypass -File scripts/test.ps1`
-Ergebnis: **0 Fehler**.
+## 1) Unit-Tests (`scripts/test.ps1`) — 0 Fehler
 
-## 1) Launcher-Selbsttest (echte C#-Quellen, in-memory kompiliert)
+* `ASLAN self-test`: 20/20 PASS (Config, Loader-Matrix (5 Loader), CF-Loader-IDs,
+  Modrinth-Parse, Regeln, UUID, Crash, Vercmp, Safename, Version 0.3.0).
+* Mod-Kerntests (javac+java): 15/15 PASS.
+* Setup-Kompilat, Loom-JAR-Inhalt (AslanClient, Mixins, fabric.mod.json),
+  Website (Branding PLAY BEYOND LIMITS, Gold-Theme, SHA-Konsistenz),
+  Next.js-Quellen, Mod-Quellen (14), Artefakte, CI-Workflows, Repo-Dateien.
 
-`Vyra.SelfTest.Run()` — alle PASS, darunter neu in 0.2.0:
+## 2) Build-Artefakte
 
-| Prüfung | Ergebnis |
-|---|---|
-| config-roundtrip / config-mc-version | PASS |
-| hw-cores / hw-ram-range | PASS |
-| perf-order / perf-maxfps-no-shader | PASS |
-| conflict-sodium-optifine / conflict-clean-set / conflict-iris-optifine | PASS |
-| perfset-count (10 verifizierte Slugs) | PASS |
-| benchmark-1pct-low / benchmark-spikes | PASS |
-| modrinth-parse / modrinth-sha512 / modrinth-deps | PASS |
-| java-finder-runs (1 gefunden) | PASS |
-| safename | PASS |
-| maven-path / parse-libraries | PASS |
-| rules-null-allow / rules-allow / rules-os-mismatch | PASS |
-| rules-features-excluded / rules-versionrange / rules-last-wins | PASS |
-| required-java (25) | PASS |
-| offline-uuid | PASS |
-| crash-oom / crash-glfw / crash-dep | PASS |
-| vercmp-newer / vercmp-equal / vercmp-minor | PASS |
+* `AslanLauncher-0.3.0.exe` + `ASLAN-Client-Setup-0.3.0.exe` (csc 4.8, 0 Fehler).
+* `aslan-client-0.3.0.jar` (Loom, BUILD SUCCESSFUL).
+* `SHA256SUMS.txt` + `release.json` konsistent.
 
-## 2) Mod-Kerntests (javac + java, JDK 25)
+## 3) Live-Verifikationen
 
-`gg.vyra.client.core.CoreSelfTest` — 15/15 PASS.
+* Quilt-Meta v3 (Loader 0.20.0-beta.9, Mappings), Forge-/NeoForge-Maven-Metadaten.
+* Forge/NeoForge-Integration als assistiert markiert (offizielle Installer).
 
-## 3) Regel-Semantik gegen echtes 26.2-JSON verifiziert
+## 4) Integrationstest (`scripts/install-integration.ps1`) — 0 Fehler (2026-10-12)
 
-Echtes `26.2.json` (51.781 Bytes, von Mojang) analysiert:
-* Alle Library-Regeln sind `allow`-only pro OS → No-Match ⇒ Exclude (sonst würden osx-Natives auf Windows landen).
-* `versionRange{min 10.0.17134}` (ZGC) und `features{demo/quickplay}` korrekt behandelt (`--demo` wird NICHT gesetzt).
-* Natives am `:natives-*`-Classifier erkannt → extrahiert + auf Classpath.
-* `javaVersion.majorVersion = 25` → Launcher verlangt Java 25+ für 26.2.
+10/10 PASS: quellen-kompiliert, instanz-installiert (4674 Dateien),
+instanz-verify-sauber, fabric-api-installiert (0.141.6+1.21.11),
+aslan-mod-in-instanz, startplan-fabric, aslan-mod-geladen
+(`[ASLAN] Bereit` in latest.log), mc-startet.
+Spiel lief stabil über 240 s (Timeout-Kill, 116 Log-Zeilen).
+Details: `docs/INTEGRATIONSTEST.md`.
 
-## 4) Build-Artefakte
+## 5) Offen (ehrlich)
 
-* `VyraLauncher-0.2.0.exe`, `VYRA-Client-Setup-0.2.0.exe` (csc 4.8, 0 Fehler, Assembly-Metadaten)
-* `vyra-client-0.2.0.jar` (7 Klassen + fabric.mod.json)
-* `SHA256SUMS.txt` + `release.json` konsistent
-
-## 5) Live-Anbindung (am Testtag gemessen)
-
-* Mojang-Manifest enthält 26.2; Fabric-Meta für 26.2 enthält 0.19.5
-* Modrinth: alle 10 Performance-Set-Slugs listen 26.2 + fabric; `modernfix` bewusst ausgenommen (nur ≤ 26.1.2), `dynamic-fps` (mit Bindestrich) verifiziert
-
-## 6) Ehrlich nicht (vollständig) testbar in dieser Umgebung
-
-* Launcher-Fenster per Doppelklick: EXE kompiliert fehlerfrei; Ausführung durch
-  AV-Heuristik blockiert möglich (unsigniert) → In-Memory-Verifikation, Signierung vorbereitet.
-* MS-Login E2E: Azure-App-ID + Testaccount fehlen.
-* Loom-Vollbuild + Minecraft-Integrationstest: siehe Abschnitt 7.
-* GitHub-Repo/Release/Pages: Account-Freigabe fehlt (alles vorbereitet).
-* Hardware-Benchmarks: keine Zweit-Hardware; nur echte lokale Messwerte.
-
-## 7) Loom-Build — ERFOLGREICH (2026-10-12)
-
-* Toolchain: Gradle 9.8.1 + Java 25 (Gradle-JVM, Loom verlangt 25) + Temurin 21 (lokal für Tests).
-* Loom 1.18.4, Yarn 1.21.11+build.6, Loader 0.19.5, Fabric-API 0.141.6+1.21.11.
-* `BUILD SUCCESSFUL`: `mods/vyra-client/build/libs/vyra-client-0.2.0.jar` (53.402 Bytes, 42 Einträge,
-  inkl. `VyraClient`, `HudManager`, `VyraMainMenu`, `TitleScreenMixin`, `fabric.mod.json`, Mixins-JSON).
-* Dieses JAR ist das Release-Artefakt (`releases/`) und wird in 1.21.11-Instanzen installiert.
-* Gefixt unterwegs (alle gegen echte Yarn-Namen verifiziert): Split main/client-Sourcesets,
-  `EquipmentSlot`-Refactor, `GraphicsMode.apply`, `ParticlesMode`-Umzug, `KeyBinding.Category`,
-  Screenshot via `takeScreenshot`+`NativeImage.writeTo`.
-* Warum nicht 26.2: Fabric liefert für 26.x keine Mappings (Yarn leer, Intermediary 0.0.0-Stub).
-  Mod-Ziel daher 1.21.11 (neueste Version mit vollständigem Stack); Launcher startet 26.2 vanilla.
-
-## 8) Integrationstest (echtes Spiel)
-
-Siehe `scripts/install-integration.ps1` + `docs/INTEGRATIONSTEST.md` (Ergebnis wird eingetragen).
+* Launcher-Fenster: EXE kompiliert; Ausführung je nach AV (unsigniert).
+* CurseForge E2E: kein API-Key vorhanden (Fallback „Seite öffnen“ implementiert).
+* MS-Login E2E: App-ID fehlt. Signatur: Zertifikat fehlt. GitHub-Push: Anmeldung fehlt.

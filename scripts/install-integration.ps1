@@ -27,7 +27,7 @@ try {
 
 $ct = New-Object Threading.CancellationToken
 $pr = New-Object Aslan.InstallProgress
-$g = New-Object Aslan.GameProfile
+$g = New-Object Aslan.AslanProfile
 $g.Name = "Integrationstest"
 $g.MinecraftVersion = "1.21.11"
 $g.Loader = "fabric"
@@ -52,7 +52,7 @@ try {
     $vs = [Aslan.ModrinthService]::GetVersions("fabric-api", "fabric", "1.21.11")
     if ($vs.Count -eq 0) { Bad "fabric-api-keine-version" } else {
         $dp = New-Object Aslan.DownloadProgress
-        [Aslan.ModrinthService]::Install($vs[0], $g, $dp, $ct)
+        [Aslan.ModrinthService]::Install($vs[0], $g, "mod", $dp, $ct)
         Ok ("fabric-api-installiert (" + $vs[0].FileName + ")")
     }
 } catch { Bad ("fabric-api: " + $_.Exception.Message) }
@@ -60,6 +60,7 @@ try {
 # --- 5) ASLAN-Loom-JAR in Instanz (explizit, da Test-Harness kein Launcher-Verzeichnis hat) ---
 $instMods = Join-Path ([Aslan.InstanceInstaller]::InstanceDir($g)) "mods"
 $loomJar = Join-Path $root "mods\aslan-client\build\libs\aslan-client-0.3.0.jar"
+New-Item -ItemType Directory -Force -Path $instMods | Out-Null
 if (Test-Path $loomJar) { Copy-Item $loomJar (Join-Path $instMods "aslan-client.jar") -Force }
 $modJar = Get-ChildItem $instMods -Filter "aslan-client*.jar" -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($modJar -ne $null) { Ok ("aslan-mod-in-instanz (" + $modJar.Name + ", " + $modJar.Length + " Bytes)") } else { Bad "aslan-mod-fehlt" }
