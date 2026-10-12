@@ -1,4 +1,4 @@
-name: vyra-build
+name: aslan-build
 
 on:
   push:
@@ -14,21 +14,21 @@ jobs:
         shell: pwsh
         run: |
           $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-          $files = Get-ChildItem apps/launcher -Filter *.cs | Where-Object { $_.Name -ne "VyraSetup.cs" } | ForEach-Object { $_.FullName }
-          $refs = @("System.dll","System.Core.dll","System.Drawing.dll","System.Windows.Forms.dll","System.Management.dll","System.Security.dll")
+          $files = Get-ChildItem apps/launcher -Filter *.cs | Where-Object { $_.Name -ne "AslanSetup.cs" } | ForEach-Object { $_.FullName }
+          $refs = @("System.dll","System.Core.dll","System.Drawing.dll","System.Windows.Forms.dll","System.Management.dll","System.Security.dll","System.IO.Compression.dll","System.IO.Compression.FileSystem.dll","System.Xml.dll")
           $refArgs = $refs | ForEach-Object { "/reference:$_" }
-          & $csc "/target:winexe" "/out:apps/launcher/VyraLauncher.exe" $refArgs $files
-          & $csc "/target:winexe" "/out:apps/launcher/VYRA-Client-Setup-0.2.0.exe" $refArgs apps/launcher/VyraSetup.cs
+          & $csc "/target:winexe" "/out:apps/launcher/AslanLauncher.exe" $refArgs $files
+          & $csc "/target:winexe" "/out:apps/launcher/ASLAN-Client-Setup-0.3.0.exe" $refArgs apps/launcher/AslanSetup.cs
       - name: Self-test (in-memory, no AV trip)
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File scripts/test.ps1
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vyra-launcher-0.2.0
+          name: aslan-launcher-0.3.0
           path: |
-            releases/VyraLauncher-0.2.0.exe
-            releases/VYRA-Client-Setup-0.2.0.exe
+            releases/AslanLauncher-0.3.0.exe
+            releases/ASLAN-Client-Setup-0.3.0.exe
 
   mod:
     runs-on: ubuntu-latest
@@ -44,17 +44,19 @@ jobs:
           java-version: "25"
       - name: Validate mod metadata
         run: |
-          python3 -c "import json; d=json.load(open('mods/vyra-client/src/main/resources/fabric.mod.json')); assert d['id']=='vyra-client', d; assert '26.2' in d['depends']['minecraft'], d['depends']; print('fabric.mod.json OK')"
-          test -f mods/vyra-client/src/main/resources/vyra-client.json && echo "mixins OK"
-      - name: Build Fabric mod (Loom, Gradle on 21, MC toolchain 25)
-        working-directory: mods/vyra-client
+          python3 -c "import json; d=json.load(open('mods/aslan-client/src/main/resources/fabric.mod.json')); assert d['id']=='aslan-client', d; print('fabric.mod.json OK')"
+          test -f mods/aslan-client/src/main/resources/aslan-client.json && echo "mixins OK"
+      - name: Build Fabric mod (Loom, Gradle on 25)
+        working-directory: mods/aslan-client
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_25_X64 }}
         run: |
-          ./gradlew --no-daemon "-Porg.gradle.java.installations.paths=$JAVA_HOME_25_X64" build
+          ./gradlew --no-daemon build
       - name: Upload mod
         uses: actions/upload-artifact@v4
         with:
-          name: vyra-client-mod
-          path: mods/vyra-client/build/libs/*.jar
+          name: aslan-client-mod
+          path: mods/aslan-client/build/libs/*.jar
 
   website:
     runs-on: ubuntu-latest

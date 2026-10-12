@@ -3,16 +3,12 @@ using System.IO;
 using System.Text;
 using System.Threading;
 
-namespace Vyra
+namespace Aslan
 {
-    // Update-System auf Basis von GitHub Releases (+ lokale Fallback-Datei).
-    // Ablauf: prüfen -> anzeigen -> mit Zustimmung laden -> Hash prüfen ->
-    // Backup -> ersetzen -> bei Fehler Rollback. Nie still, nie ohne Hash.
     public static class UpdateChecker
     {
-        public const string CurrentVersion = "0.2.0";
-        // Wird nach Repo-Erstellung gesetzt (UpdateUrlPath). Platzhalter = Updates deaktiviert.
-        public static string RepoSlug = ""; // z. B. "DEINNAME/VYRA-Client"
+        public const string CurrentVersion = "0.3.0";
+        public static string RepoSlug = "";
 
         public sealed class UpdateInfo
         {
@@ -54,7 +50,7 @@ namespace Vyra
         {
             try
             {
-                string p = Path.Combine(VyraPaths.BaseDir, "update_repo.txt");
+                string p = Path.Combine(AslanPaths.BaseDir, "update_repo.txt");
                 if (File.Exists(p))
                 {
                     string v = File.ReadAllText(p, Encoding.UTF8).Trim();
@@ -66,7 +62,7 @@ namespace Vyra
 
         public static void SaveRepoSlug(string slug)
         {
-            try { File.WriteAllText(Path.Combine(VyraPaths.BaseDir, "update_repo.txt"), slug, Encoding.UTF8); } catch { }
+            try { File.WriteAllText(Path.Combine(AslanPaths.BaseDir, "update_repo.txt"), slug, Encoding.UTF8); } catch { }
             RepoSlug = slug;
         }
 
@@ -85,7 +81,6 @@ namespace Vyra
                     info.Available = true;
                     info.Version = ver;
                     info.Notes = MiniJson.ExtractString(json, "body", "");
-                    // Erstes Asset mit .exe/.ps1 als Installer-Kandidat
                     int ai = json.IndexOf("\"assets\"");
                     if (ai >= 0)
                     {
@@ -103,14 +98,13 @@ namespace Vyra
             return info;
         }
 
-        // Wendet ein Update an: lädt Installer, prüft SHA-256, sichert alte EXE, ersetzt.
         public static string ApplyUpdate(UpdateInfo info, string currentExePath, CancellationToken ct)
         {
             if (info == null || !info.Available) return "Kein Update verfügbar.";
             if (info.InstallerUrl == null) return "Keine Installer-URL im Release.";
-            string tmp = Path.Combine(VyraPaths.CacheDir, "update-" + info.Version + ".bin");
+            string tmp = Path.Combine(AslanPaths.CacheDir, "update-" + info.Version + ".bin");
             DownloadProgress dp = new DownloadProgress();
-            Http.Download(info.InstallerUrl, tmp, dp, ct);
+            DownloadCenter.Download(info.InstallerUrl, tmp, dp, ct);
             if (info.Sha256 != null && info.Sha256.Length == 64)
             {
                 string got;
@@ -130,7 +124,7 @@ namespace Vyra
             }
             try
             {
-                string backup = Path.Combine(VyraPaths.BackupsDir, "VyraLauncher-vor-" + info.Version + ".exe.bak");
+                string backup = Path.Combine(AslanPaths.BackupsDir, "AslanLauncher-vor-" + info.Version + ".exe.bak");
                 if (File.Exists(currentExePath)) File.Copy(currentExePath, backup, true);
             }
             catch (Exception ex) { return "Backup fehlgeschlagen, Update abgebrochen: " + ex.Message; }

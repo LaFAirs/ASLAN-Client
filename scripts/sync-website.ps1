@@ -21,6 +21,6 @@ foreach ($ln in $lines) {
     $files += "    {`"name`": `"$name`", `"size`": `"$mb`", `"sha256`": `"$($parts[0])`"}"
 }
 $date = Get-Date -Format "yyyy-MM-dd"
-$json = "{`"version`": `"0.2.0`", `"date`": `"$date`", `"github`": `"$Github`", `"downloadUrl`": `"$DownloadUrl`", `"files`": [`n" + ($files -join ",`n") + "`n]}"
+$json = "{`"version`": `"0.3.0`", `"date`": `"$date`", `"github`": `"$Github`", `"downloadUrl`": `"$DownloadUrl`", `"files`": [`n" + ($files -join ",`n") + "`n]}"
 $json | Set-Content (Join-Path $site "release.json") -Encoding ASCII
 Write-Host "OK: release.json"

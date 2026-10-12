@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 export default function Downloads() {
-  const tag = "v0.2.0";
-  const repo = "https://github.com/OWNER/VYRA-Client";
+  const tag = "v0.3.0";
+  const repo = "https://github.com/OWNER/ASLAN-Client";
   return (
     <main className="mx-auto max-w-3xl px-6 py-16 text-[#ebebf5]">
       <h1 className="text-4xl font-bold text-[#a78bfa]">Downloads</h1>

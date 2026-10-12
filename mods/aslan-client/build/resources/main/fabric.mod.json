@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "aslan-client",
+  "version": "0.2.0",
+  "name": "ASLAN Client",
+  "description": "Next-gen Minecraft performance, customization and smooth gameplay. Independent third-party project, not affiliated with Mojang or Microsoft. No cheats.",
+  "authors": ["ASLAN Team"],
+  "license": "MIT",
+  "icon": "assets/aslan-client/icon.png",
+  "contact": {
+    "homepage": "https://github.com/OWNER/ASLAN-Client",
+    "issues": "https://github.com/OWNER/ASLAN-Client/issues"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": ["gg.aslan.client.AslanClient"]
+  },
+  "mixins": ["aslan-client.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "minecraft": "~1.21.11",
+    "java": ">=21"
+  }
+}

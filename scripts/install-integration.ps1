@@ -1,4 +1,4 @@
-# VYRA Integrationstest: echte 1.21.11-Fabric-Instanz installieren + offline starten + VYRA-Marker pruefen.
+# ASLAN Integrationstest: echte 1.21.11-Fabric-Instanz installieren + offline starten + ASLAN-Marker pruefen.
 # ASCII only. Dauert mehrere Minuten (Downloads). Oeffnet kurz ein Minecraft-Fenster.
 $ErrorActionPreference = "Continue"
 $root = Split-Path $PSScriptRoot -Parent
@@ -6,12 +6,12 @@ $fail = 0
 function Ok($n) { Write-Host ("PASS " + $n) }
 function Bad($n) { Write-Host ("FAIL " + $n); $script:fail++ }
 
-Write-Host "== VYRA INTEGRATIONSTEST =="
+Write-Host "== ASLAN INTEGRATIONSTEST =="
 
 # --- 1) Launcher-Quellen in-memory kompilieren ---
 try {
     $csDir = Join-Path $root "apps\launcher"
-    $files = Get-ChildItem $csDir -Filter "*.cs" | Where-Object { $_.Name -ne "VyraSetup.cs" } | ForEach-Object { $_.FullName }
+    $files = Get-ChildItem $csDir -Filter "*.cs" | Where-Object { $_.Name -ne "AslanSetup.cs" } | ForEach-Object { $_.FullName }
     $us = @(); $asm = @(); $bo = @()
     foreach ($f in $files) {
         foreach ($ln in [IO.File]::ReadAllLines($f)) {
@@ -26,8 +26,8 @@ try {
 } catch { Bad ("quellen: " + $_.Exception.Message); exit 1 }
 
 $ct = New-Object Threading.CancellationToken
-$pr = New-Object Vyra.InstallProgress
-$g = New-Object Vyra.GameProfile
+$pr = New-Object Aslan.InstallProgress
+$g = New-Object Aslan.GameProfile
 $g.Name = "Integrationstest"
 $g.MinecraftVersion = "1.21.11"
 $g.Loader = "fabric"
@@ -37,39 +37,39 @@ $g.RamMB = 3072
 # --- 2) Instanz installieren ---
 try {
     Write-Host "Installiere Instanz (Client, Libraries, Natives, Assets, Fabric) ..."
-    [Vyra.InstanceInstaller]::EnsureInstalled($g, $g.LoaderVersion, $pr, $ct)
+    [Aslan.InstanceInstaller]::EnsureInstalled($g, $g.LoaderVersion, $pr, $ct)
     Ok ("instanz-installiert (" + $pr.DoneFiles + " Dateien)")
 } catch { Bad ("instanz: " + $_.Exception.Message); exit 1 }
 
 # --- 3) Verify ---
 try {
-    $problems = [Vyra.InstanceInstaller]::Verify($g)
+    $problems = [Aslan.InstanceInstaller]::Verify($g)
     if ($problems.Count -eq 0) { Ok "instanz-verify-sauber" } else { Bad ("verify: " + ($problems -join " | ")) }
 } catch { Bad ("verify: " + $_.Exception.Message) }
 
 # --- 4) fabric-api + modmenu aus Modrinth ---
 try {
-    $vs = [Vyra.ModrinthService]::GetVersions("fabric-api", "fabric", "1.21.11")
+    $vs = [Aslan.ModrinthService]::GetVersions("fabric-api", "fabric", "1.21.11")
     if ($vs.Count -eq 0) { Bad "fabric-api-keine-version" } else {
-        $dp = New-Object Vyra.DownloadProgress
-        [Vyra.ModrinthService]::Install($vs[0], $g, $dp, $ct)
+        $dp = New-Object Aslan.DownloadProgress
+        [Aslan.ModrinthService]::Install($vs[0], $g, $dp, $ct)
         Ok ("fabric-api-installiert (" + $vs[0].FileName + ")")
     }
 } catch { Bad ("fabric-api: " + $_.Exception.Message) }
 
-# --- 5) VYRA-Loom-JAR in Instanz (explizit, da Test-Harness kein Launcher-Verzeichnis hat) ---
-$instMods = Join-Path ([Vyra.InstanceInstaller]::InstanceDir($g)) "mods"
-$loomJar = Join-Path $root "mods\vyra-client\build\libs\vyra-client-0.2.0.jar"
-if (Test-Path $loomJar) { Copy-Item $loomJar (Join-Path $instMods "vyra-client.jar") -Force }
-$vyraJar = Get-ChildItem $instMods -Filter "vyra-client*.jar" -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($vyraJar -ne $null) { Ok ("vyra-mod-in-instanz (" + $vyraJar.Name + ", " + $vyraJar.Length + " Bytes)") } else { Bad "vyra-mod-fehlt" }
+# --- 5) ASLAN-Loom-JAR in Instanz (explizit, da Test-Harness kein Launcher-Verzeichnis hat) ---
+$instMods = Join-Path ([Aslan.InstanceInstaller]::InstanceDir($g)) "mods"
+$loomJar = Join-Path $root "mods\aslan-client\build\libs\aslan-client-0.3.0.jar"
+if (Test-Path $loomJar) { Copy-Item $loomJar (Join-Path $instMods "aslan-client.jar") -Force }
+$modJar = Get-ChildItem $instMods -Filter "aslan-client*.jar" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($modJar -ne $null) { Ok ("aslan-mod-in-instanz (" + $modJar.Name + ", " + $modJar.Length + " Bytes)") } else { Bad "aslan-mod-fehlt" }
 
 # --- 6) Startplan bauen + offline starten ---
 try {
     $java = "$env:LOCALAPPDATA\Programs\Temurin21\jdk-21.0.12.1+1\bin\java.exe"
     if (!(Test-Path $java)) { Bad "java21-fehlt"; exit 1 }
-    $uuid = [Vyra.InstanceInstaller]::OfflineUuid("Spieler")
-    $plan = [Vyra.InstanceInstaller]::BuildPlan($g, "Spieler", $uuid, "-", $java, $g.LoaderVersion)
+    $uuid = [Aslan.InstanceInstaller]::OfflineUuid("Spieler")
+    $plan = [Aslan.InstanceInstaller]::BuildPlan($g, "Spieler", $uuid, "-", $java, $g.LoaderVersion)
     if ($plan.Arguments.Contains("KnotClient") -and $plan.Arguments.Contains("1.21.11.jar")) { Ok "startplan-fabric" } else { Bad "startplan-falsch" }
     Write-Host "Starte Minecraft (offline, max 240 s, Fenster oeffnet sich) ..."
     $psi = New-Object Diagnostics.ProcessStartInfo
@@ -94,11 +94,11 @@ try {
     $log = $out.ToString()
     # Konsole ist verzoegert/unvollstaendig -> massgeblich ist logs/latest.log der Instanz.
     try {
-        $ll = Join-Path ([Vyra.InstanceInstaller]::InstanceDir($g)) "logs\latest.log"
+        $ll = Join-Path ([Aslan.InstanceInstaller]::InstanceDir($g)) "logs\latest.log"
         if (Test-Path $ll) { $log = [IO.File]::ReadAllText($ll) }
     } catch { }
     $log | Out-File (Join-Path $root "tests\integration-log.txt") -Encoding UTF8
-    if ($log.Contains("[VYRA]")) { Ok "vyra-mod-geladen" } else { Bad "vyra-marker-fehlt" }
+    if ($log.Contains("[ASLAN]")) { Ok "aslan-mod-geladen" } else { Bad "vyra-marker-fehlt" }
     if ($log -match "Minecraft 1.21.11|Setting user|Backend library") { Ok "mc-startet" } else { Bad "mc-start-fehlt" }
     if ($log -match "Failed to load|Exception in thread.*Render|GLFW error") { Write-Host "WARN: Grafik-/Ladefehler im Log (siehe tests/integration-log.txt)" }
     Write-Host ("Exit-Code: " + $proc.ExitCode + ", Log-Zeilen: " + ($log -split "`n").Count)

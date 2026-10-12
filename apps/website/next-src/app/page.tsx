@@ -9,15 +9,15 @@ const fade = {
   transition: { duration: 0.55 },
 };
 
-const RELEASE_TAG = "v0.2.0";
-const GITHUB_REPO = "https://github.com/OWNER/VYRA-Client";
+const RELEASE_TAG = "v0.3.0";
+const GITHUB_REPO = "https://github.com/OWNER/ASLAN-Client";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a10] text-[#ebebf5]">
       <motion.section {...fade} className="mx-auto max-w-4xl px-6 pt-24 text-center">
         <h1 className="bg-gradient-to-r from-[#a78bfa] to-[#38bdf8] bg-clip-text text-6xl font-extrabold tracking-wide text-transparent">
-          VYRA CLIENT
+          ASLAN CLIENT
         </h1>
         <p className="mt-3 text-xl font-semibold">Your Minecraft. Your Performance. Your Rules.</p>
         <p className="mt-2 text-[#94a3b8]">
@@ -58,7 +58,7 @@ export default function Home() {
       </motion.section>
 
       <footer className="border-t border-[#26263a] px-6 py-8 text-center text-sm text-[#94a3b8]">
-        VYRA Client ist ein unabhängiges Drittanbieterprojekt, nicht von Mojang/Microsoft.
+        ASLAN CLIENT ist ein unabhängiges Drittanbieterprojekt, nicht von Mojang/Microsoft.
       </footer>
     </main>
   );

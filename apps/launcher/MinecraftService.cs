@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
 
-namespace Vyra
+namespace Aslan
 {
     public sealed class JavaInstall
     {
@@ -30,6 +29,16 @@ namespace Vyra
                 {
                     string[] exes = Directory.GetFiles(prism, "java.exe", SearchOption.AllDirectories);
                     for (int i = 0; i < exes.Length; i++) candidates.Add(exes[i]);
+                }
+                string alauncher = Path.Combine(appdata, "ASLANCLIENT", "java");
+                if (Directory.Exists(alauncher))
+                {
+                    try
+                    {
+                        string[] exes = Directory.GetFiles(alauncher, "java.exe", SearchOption.AllDirectories);
+                        for (int i = 0; i < exes.Length; i++) candidates.Add(exes[i]);
+                    }
+                    catch { }
                 }
                 string mc = Path.Combine(appdata, ".minecraft", "runtime");
                 if (Directory.Exists(mc))
@@ -134,7 +143,6 @@ namespace Vyra
             catch { return 0; }
         }
 
-        // Java Repair: prüft, ob ein Java die Mindestversion erfüllt, sonst Vorschlag.
         public static string RepairHint(int needMajor, List<JavaInstall> found)
         {
             int best = 0;
@@ -142,7 +150,7 @@ namespace Vyra
                 best = Math.Max(best, MajorOf(found[i].Version));
             if (best >= needMajor) return null;
             return "Kein Java " + needMajor + "+ gefunden (bestes: " + (best == 0 ? "keins" : ("Java " + best)) + "). " +
-                "Bitte Microsoft Build of OpenJDK " + needMajor + " (LTS) installieren oder PrismLauncher-Runtime nutzen.";
+                "Bitte ein OpenJDK " + needMajor + " (LTS) installieren.";
         }
     }
 
@@ -153,7 +161,7 @@ namespace Vyra
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.Method = "GET";
             req.Timeout = timeoutMs;
-            req.UserAgent = "VYRA-Client/0.2 (+independent project)";
+            req.UserAgent = "ASLAN-Client/0.3 (+independent project)";
             req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
             using (Stream s = resp.GetResponseStream())
@@ -168,7 +176,7 @@ namespace Vyra
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.Method = "GET";
             req.Timeout = 30000;
-            req.UserAgent = "VYRA-Client/0.2 (+independent project)";
+            req.UserAgent = "ASLAN-Client/0.3 (+independent project)";
             req.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
             using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
             using (Stream src = resp.GetResponseStream())
@@ -200,11 +208,30 @@ namespace Vyra
         public long Done;
         public long Total;
         public string Label;
-        public void Report(long done, long total) { Done = done; Total = total; }
+        public long LastTime;
+        public long LastDone;
+        public double SpeedBps;
+        public void Report(long done, long total)
+        {
+            long now = DateTime.UtcNow.Ticks / 10000L;
+            if (LastTime > 0 && now > LastTime)
+            {
+                double dt = (now - LastTime) / 1000.0;
+                if (dt > 0.2) { SpeedBps = (done - LastDone) / dt; LastTime = now; LastDone = done; }
+            }
+            else { LastTime = now; LastDone = done; }
+            Done = done; Total = total;
+        }
         public int Percent()
         {
             if (Total <= 0) return 0;
             return (int)(Done * 100L / Total);
+        }
+        public string SpeedText()
+        {
+            if (SpeedBps < 1024) return ((int)SpeedBps) + " B/s";
+            if (SpeedBps < 1048576) return (SpeedBps / 1024.0).ToString("0.0") + " KB/s";
+            return (SpeedBps / 1048576.0).ToString("0.0") + " MB/s";
         }
     }
 
@@ -213,19 +240,16 @@ namespace Vyra
         public string Id;
         public string Type;
         public string Url;
-        public DateTime Time;
     }
 
     public static class MinecraftService
     {
         public const string VersionManifest = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
         public const string FabricMeta = "https://meta.fabricmc.net/v2/versions/loader/";
-        // VYRA-Mod-Zielversion: neueste MC-Version mit VOLLSTAENDIGEM Fabric-Stack
-        // (Yarn-Mappings + Intermediary + Fabric-API). Stand 2026-10-12: 1.21.11.
-        // Fuer 26.x existieren Loader, aber keine Mappings (Intermediary 0.0.0-Stub).
-        public const string ModMinecraftVersion = "1.21.11";
+        public const string QuiltMeta = "https://meta.quiltmc.org/v3/versions/loader/";
+        public const string ModMinecraftVersion = "1.21.11"; // ASLAN-Mod-Ziel (voller Fabric-Stack)
 
-        public static List<McVersionEntry> GetVersions()
+        public static List<McVersionEntry> GetVersions(bool snapshots)
         {
             string json = Http.Get(VersionManifest, 20000);
             List<McVersionEntry> list = new List<McVersionEntry>();
@@ -235,7 +259,7 @@ namespace Vyra
             int brace = 0;
             StringBuilder cur = new StringBuilder();
             bool inObj = false;
-            for (; i >= 0 && i < json.Length && list.Count < 400; i++)
+            for (; i >= 0 && i < json.Length && list.Count < 600; i++)
             {
                 char ch = json[i];
                 if (ch == '{') { brace++; inObj = true; }
@@ -252,7 +276,10 @@ namespace Vyra
                         e.Id = MiniJson.ExtractString(o, "id", null);
                         e.Type = MiniJson.ExtractString(o, "type", "");
                         e.Url = MiniJson.ExtractString(o, "url", null);
-                        if (e.Id != null && e.Url != null) list.Add(e);
+                        if (e.Id != null && e.Url != null)
+                        {
+                            if (e.Type == "release" || (snapshots && e.Type == "snapshot")) list.Add(e);
+                        }
                     }
                 }
                 if (ch == ']' && brace == 0 && list.Count > 0) break;
@@ -269,11 +296,11 @@ namespace Vyra
 
         public static string EnsureVersionJson(string mcVersion)
         {
-            string dir = Path.Combine(VyraPaths.VersionsDir, mcVersion);
+            string dir = Path.Combine(AslanPaths.VersionsDir, mcVersion);
             Directory.CreateDirectory(dir);
             string dest = Path.Combine(dir, mcVersion + ".json");
             if (File.Exists(dest)) return dest;
-            List<McVersionEntry> all = GetVersions();
+            List<McVersionEntry> all = GetVersions(true);
             string url = null;
             for (int i = 0; i < all.Count; i++)
                 if (all[i].Id == mcVersion) url = all[i].Url;
@@ -281,24 +308,6 @@ namespace Vyra
             string json = Http.Get(url, 20000);
             File.WriteAllText(dest, json, Encoding.UTF8);
             return dest;
-        }
-
-        public static string GetFabricLoaderVersions(string mcVersion)
-        {
-            return Http.Get(FabricMeta + Uri.EscapeDataString(mcVersion), 20000);
-        }
-
-        public static string PickLatestFabricLoader(string metaJson)
-        {
-            List<string> vs = MiniJson.ExtractAllStrings(metaJson, "version");
-            for (int i = 0; i < vs.Count; i++)
-            {
-                string v = vs[i];
-                if (v.Length > 0 && char.IsDigit(v[0]) && v.IndexOf("SNAPSHOT") < 0 && v.Split('.').Length >= 3)
-                    return v;
-            }
-            if (vs.Count > 0) return vs[0];
-            return null;
         }
 
         public static string SafeName(string s)
@@ -326,7 +335,7 @@ namespace Vyra
                     Array.Sort(files);
                     for (int i = Math.Max(0, files.Length - 3); i < files.Length; i++)
                         hints.Add(Path.GetFileName(files[i]) + ": " + CrashAnalyzer.Summarize(File.ReadAllText(files[i])));
-            }
+                }
             }
             catch { }
             return hints;

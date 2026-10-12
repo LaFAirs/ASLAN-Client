@@ -1,4 +1,4 @@
-// VYRA site: Partikel-Hero, Scroll-Reveal, Release-Tabelle, GitHub-Link. Respektiert Reduced Motion.
+// ASLAN site: Partikel-Hero, Scroll-Reveal, Release-Tabelle, GitHub-Link. Respektiert Reduced Motion.
 (function () {
   "use strict";
   var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -32,7 +32,7 @@
       for (var k = 0; k < ps.length; k++) {
         var p = ps[k]; p.y -= p.v; if (p.y < 0) p.y = 1;
         var g = ctx.createRadialGradient(p.x * cv.width, p.y * cv.height, 0, p.x * cv.width, p.y * cv.height, 40 * p.s);
-        g.addColorStop(0, "rgba(139,123,255,.5)"); g.addColorStop(1, "rgba(139,123,255,0)");
+        g.addColorStop(0, "rgba(255,191,71,.5)"); g.addColorStop(1, "rgba(255,191,71,0)");
         ctx.fillStyle = g; ctx.fillRect(p.x * cv.width - 40, p.y * cv.height - 40, 80, 80);
       }
       requestAnimationFrame(tick);

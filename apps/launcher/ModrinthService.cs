@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
+using System.IO.Compression;
 using System.Text;
 using System.Threading;
 
-namespace Vyra
+namespace Aslan
 {
     public sealed class ModrinthHit
     {
@@ -14,8 +14,9 @@ namespace Vyra
         public string Title;
         public string Description;
         public string License;
-        public string Versions;
+        public string IconUrl;
         public string Downloads;
+        public string Categories;
     }
 
     public sealed class ModrinthVersion
@@ -28,18 +29,35 @@ namespace Vyra
         public string FileName;
         public long FileSize;
         public string Sha512;
-        public List<string> RequiredDeps = new List<string>(); // Projekt-Slugs erforderlicher Abhängigkeiten
+        public List<string> RequiredDeps = new List<string>();
+    }
+
+    public sealed class ModrinthProject
+    {
+        public string Slug;
+        public string Title;
+        public string Description;
+        public string Body;
+        public string License;
+        public string IconUrl;
+        public string Downloads;
+        public string Categories;
+        public string ProjectType;
     }
 
     public static class ModrinthService
     {
         public const string Api = "https://api.modrinth.com/v2";
 
-        public static List<ModrinthHit> Search(string query, string loader, string mcVersion, int limit)
+        public static List<ModrinthHit> Search(string query, string loader, string mcVersion, string projectType, int limit)
         {
-            string url = Api + "/search?query=" + Uri.EscapeDataString(query)
-                + "&facets=[[\"categories:" + Uri.EscapeDataString(loader) + "\"],[\"versions:" + Uri.EscapeDataString(mcVersion) + "\"]]"
-                + "&limit=" + limit;
+            string facets = "[[\"project_type:" + Uri.EscapeDataString(projectType) + "\"]";
+            if (loader != null && loader.Length > 0 && loader != "vanilla")
+                facets += ",[\"categories:" + Uri.EscapeDataString(loader) + "\"]";
+            if (mcVersion != null && mcVersion.Length > 0)
+                facets += ",[\"versions:" + Uri.EscapeDataString(mcVersion) + "\"]";
+            facets += "]";
+            string url = Api + "/search?query=" + Uri.EscapeDataString(query) + "&facets=" + facets + "&limit=" + limit;
             string json;
             try { json = Http.Get(url, 20000); }
             catch
@@ -73,12 +91,29 @@ namespace Vyra
                         h.Description = MiniJson.ExtractString(o, "description", "");
                         h.Id = MiniJson.ExtractString(o, "project_id", h.Slug);
                         h.License = MiniJson.ExtractString(o, "license", "");
+                        h.IconUrl = MiniJson.ExtractString(o, "icon_url", null);
+                        h.Downloads = MiniJson.ExtractNumber(o, "downloads", "?");
                         if (h.Slug != null) hits.Add(h);
                     }
                 }
                 if (ch == ']' && brace == 0 && hits.Count > 0) break;
             }
             return hits;
+        }
+
+        public static ModrinthProject GetProject(string slug)
+        {
+            string json = Http.Get(Api + "/project/" + Uri.EscapeDataString(slug), 15000);
+            ModrinthProject p = new ModrinthProject();
+            p.Slug = MiniJson.ExtractString(json, "slug", slug);
+            p.Title = MiniJson.ExtractString(json, "title", slug);
+            p.Description = MiniJson.ExtractString(json, "description", "");
+            p.Body = MiniJson.ExtractString(json, "body", "");
+            p.License = MiniJson.ExtractString(json, "license", "");
+            p.IconUrl = MiniJson.ExtractString(json, "icon_url", null);
+            p.Downloads = MiniJson.ExtractNumber(json, "downloads", "?");
+            p.ProjectType = MiniJson.ExtractString(json, "project_type", "");
+            return p;
         }
 
         public static string GetLicense(string slug)
@@ -163,7 +198,6 @@ namespace Vyra
                     if (q1 >= 0 && q2 > q1) v.Sha512 = o.Substring(q1 + 1, q2 - q1 - 1);
                 }
             }
-            // dependencies: [{"project_id": "...", "dependency_type": "required", ...}]
             int di = o.IndexOf("\"dependencies\"");
             if (di >= 0)
             {
@@ -202,22 +236,31 @@ namespace Vyra
             return null;
         }
 
-        public static string ModsDir(GameProfile p)
+        public static string ModsDir(AslanProfile p)
         {
-            string d = Path.Combine(VyraPaths.ProfilesDir, MinecraftService.SafeName(p.Name), "mods");
+            string d = Path.Combine(AslanPaths.ProfilesDir, MinecraftService.SafeName(p.Name), "mods");
             Directory.CreateDirectory(d);
             return d;
         }
 
-        public static void Install(ModrinthVersion v, GameProfile p, DownloadProgress prog, CancellationToken ct)
+        public static string TargetDir(AslanProfile p, string projectType)
         {
-            string dir = ModsDir(p);
+            string sub = "mods";
+            if (projectType == "shader") sub = "shaderpacks";
+            else if (projectType == "resourcepack") sub = "resourcepacks";
+            string d = Path.Combine(AslanPaths.ProfilesDir, MinecraftService.SafeName(p.Name), sub);
+            Directory.CreateDirectory(d);
+            return d;
+        }
+
+        public static void Install(ModrinthVersion v, AslanProfile p, string projectType, DownloadProgress prog, CancellationToken ct)
+        {
+            string dir = TargetDir(p, projectType);
             string dest = Path.Combine(dir, v.FileName);
             if (!(v.FileUrl.StartsWith("https://cdn.modrinth.com/") || v.FileUrl.StartsWith("https://edge.forgecdn.net/")))
                 throw new Exception("Download-Quelle nicht vertrauenswürdig: " + v.FileUrl);
             if (prog != null) prog.Label = v.FileName;
-            Http.Download(v.FileUrl, dest, prog, ct);
-            // SHA-512-Prüfung, wenn vom Index geliefert
+            DownloadCenter.Download(v.FileUrl, dest, prog, ct);
             if (v.Sha512 != null && v.Sha512.Length == 128)
             {
                 string got = HashCheck.Sha512Of(dest);
@@ -227,15 +270,17 @@ namespace Vyra
                     throw new Exception("Hash mismatch bei " + v.FileName + " — Download verworfen.");
                 }
             }
-            // Erforderliche Abhängigkeiten (rekursiv, mit Bestätigung durch Aufrufer)
-            for (int i = 0; i < v.RequiredDeps.Count; i++)
+            if (projectType == "mod" || projectType == null)
             {
-                string depSlug = ResolveSlug(v.RequiredDeps[i]);
-                if (depSlug == null) continue;
-                if (IsPresent(p, depSlug)) continue;
-                List<ModrinthVersion> dvs = GetVersions(depSlug, "fabric", p.MinecraftVersion);
-                if (dvs.Count == 0) throw new Exception("Abhängigkeit " + depSlug + " hat keine passende Version für MC " + p.MinecraftVersion + ".");
-                Install(dvs[0], p, prog, ct);
+                for (int i = 0; i < v.RequiredDeps.Count; i++)
+                {
+                    string depSlug = ResolveSlug(v.RequiredDeps[i]);
+                    if (depSlug == null) continue;
+                    if (IsPresent(p, depSlug)) continue;
+                    List<ModrinthVersion> dvs = GetVersions(depSlug, p.Loader, p.MinecraftVersion);
+                    if (dvs.Count == 0) throw new Exception("Abhängigkeit " + depSlug + " hat keine passende Version für MC " + p.MinecraftVersion + ".");
+                    Install(dvs[0], p, "mod", prog, ct);
+                }
             }
         }
 
@@ -249,7 +294,7 @@ namespace Vyra
             catch { return projectIdOrSlug; }
         }
 
-        private static bool IsPresent(GameProfile p, string slug)
+        private static bool IsPresent(AslanProfile p, string slug)
         {
             try
             {
@@ -263,7 +308,7 @@ namespace Vyra
             return false;
         }
 
-        public static List<string> ListInstalled(GameProfile p)
+        public static List<string> ListInstalled(AslanProfile p)
         {
             List<string> files = new List<string>();
             try
@@ -278,7 +323,21 @@ namespace Vyra
             return files;
         }
 
-        public static void SetEnabled(GameProfile p, string fileName, bool enabled)
+        public static List<string> ListFiles(AslanProfile p, string sub, string pattern)
+        {
+            List<string> files = new List<string>();
+            try
+            {
+                string dir = Path.Combine(AslanPaths.ProfilesDir, MinecraftService.SafeName(p.Name), sub);
+                if (!Directory.Exists(dir)) return files;
+                string[] fs = Directory.GetFiles(dir, pattern);
+                for (int i = 0; i < fs.Length; i++) files.Add(Path.GetFileName(fs[i]));
+            }
+            catch { }
+            return files;
+        }
+
+        public static void SetEnabled(AslanProfile p, string fileName, bool enabled)
         {
             string dir = ModsDir(p);
             string a = Path.Combine(dir, fileName);
@@ -287,14 +346,14 @@ namespace Vyra
             else if (!enabled && File.Exists(a)) File.Move(a, b);
         }
 
-        public static void Remove(GameProfile p, string fileName)
+        public static void Remove(AslanProfile p, string fileName)
         {
             string dir = ModsDir(p);
             string a = Path.Combine(dir, fileName);
             string b = Path.Combine(dir, fileName + ".disabled");
             try
             {
-                string backup = Path.Combine(VyraPaths.BackupsDir, DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+                string backup = Path.Combine(AslanPaths.BackupsDir, DateTime.Now.ToString("yyyyMMdd-HHmmss"));
                 Directory.CreateDirectory(backup);
                 if (File.Exists(a)) { File.Copy(a, Path.Combine(backup, fileName), true); File.Delete(a); }
                 if (File.Exists(b)) { File.Copy(b, Path.Combine(backup, fileName + ".disabled"), true); File.Delete(b); }
@@ -302,8 +361,7 @@ namespace Vyra
             catch (Exception ex) { throw new Exception("Entfernen fehlgeschlagen: " + ex.Message); }
         }
 
-        // Modprofile exportieren/importieren (Liste von Slugs + Versionen)
-        public static string ExportProfile(GameProfile p)
+        public static string ExportProfile(AslanProfile p)
         {
             StringBuilder sb = new StringBuilder("{\"profile\":\"");
             sb.Append(p.Name.Replace("\\", "\\\\").Replace("\"", "\\\""));
@@ -318,11 +376,127 @@ namespace Vyra
                 first = false;
             }
             sb.Append("]}");
-            string dir = Path.Combine(VyraPaths.BaseDir, "modprofiles");
+            string dir = Path.Combine(AslanPaths.BaseDir, "modprofiles");
             Directory.CreateDirectory(dir);
-            string dest = Path.Combine(dir, MinecraftService.SafeName(p.Name) + ".vyramods.json");
+            string dest = Path.Combine(dir, MinecraftService.SafeName(p.Name) + ".aslanmods.json");
             File.WriteAllText(dest, sb.ToString(), Encoding.UTF8);
             return dest;
+        }
+
+        // ---------- .mrpack-Import (Modrinth-Modpack-Format) ----------
+        public sealed class MrpackResult
+        {
+            public string Name;
+            public string McVersion;
+            public string Loader;
+            public int FilesOk;
+            public List<string> Errors = new List<string>();
+        }
+
+        public static MrpackResult ImportMrpack(string mrpackPath, AslanProfile p, DownloadProgress prog, CancellationToken ct)
+        {
+            MrpackResult r = new MrpackResult();
+            string tmp = Path.Combine(AslanPaths.CacheDir, "mrpack-" + DateTime.Now.ToString("yyyyMMddHHmmss"));
+            Directory.CreateDirectory(tmp);
+            using (FileStream fs = new FileStream(mrpackPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            using (ZipArchive zip = new ZipArchive(fs, ZipArchiveMode.Read))
+            {
+                foreach (ZipArchiveEntry e in zip.Entries)
+                {
+                    if (e.FullName.EndsWith("/")) continue;
+                    if (e.FullName.StartsWith("overrides/"))
+                    {
+                        string dest = Path.Combine(InstanceInstaller.InstanceDir(p), e.FullName.Substring("overrides/".Length).Replace('/', Path.DirectorySeparatorChar));
+                        Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                        using (Stream s = e.Open())
+                        using (FileStream o = new FileStream(dest, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            s.CopyTo(o);
+                        }
+                        continue;
+                    }
+                    if (e.FullName == "modrinth.index.json")
+                    {
+                        string idx = Path.Combine(tmp, "modrinth.index.json");
+                        using (Stream s = e.Open())
+                        using (FileStream o = new FileStream(idx, FileMode.Create, FileAccess.Write, FileShare.None))
+                        {
+                            s.CopyTo(o);
+                        }
+                    }
+                }
+            }
+            string indexPath = Path.Combine(tmp, "modrinth.index.json");
+            if (!File.Exists(indexPath)) throw new Exception("Kein modrinth.index.json im Pack (kein gültiges .mrpack).");
+            string json = File.ReadAllText(indexPath, Encoding.UTF8);
+            r.Name = MiniJson.ExtractString(json, "name", Path.GetFileNameWithoutExtension(mrpackPath));
+            string deps = JsonScan.Block(json, "dependencies");
+            if (deps != null)
+            {
+                r.McVersion = MiniJson.ExtractString(deps, "minecraft", p.MinecraftVersion);
+                if (deps.Contains("fabric-loader")) r.Loader = "fabric";
+                else if (deps.Contains("quilt-loader")) r.Loader = "quilt";
+                else if (deps.Contains("neoforge")) r.Loader = "neoforge";
+                else if (deps.Contains("forge")) r.Loader = "forge";
+            }
+            p.ModpackName = r.Name;
+            // Dateien: [{path, hashes:{sha512}, downloads:[url], fileSize}]
+            int fi = json.IndexOf("\"files\"");
+            if (fi < 0) throw new Exception("Pack enthält keine Dateiliste.");
+            List<string> fileObjs = JsonScan.SplitObjects(json.Substring(fi), "files", 2000);
+            if (prog != null) { }
+            for (int i = 0; i < fileObjs.Count; i++)
+            {
+                if (ct.IsCancellationRequested) throw new OperationCanceledException();
+                try
+                {
+                    string o = fileObjs[i];
+                    string rel = MiniJson.ExtractString(o, "path", null);
+                    if (rel == null) continue;
+                    string sha512 = null;
+                    int hh = o.IndexOf("\"hashes\"");
+                    if (hh >= 0)
+                    {
+                        int q1 = o.IndexOf("\"sha512\"", hh);
+                        if (q1 >= 0)
+                        {
+                            int c = o.IndexOf(':', q1);
+                            int s1 = o.IndexOf('"', c + 1);
+                            int s2 = o.IndexOf('"', s1 + 1);
+                            if (s1 >= 0 && s2 > s1) sha512 = o.Substring(s1 + 1, s2 - s1 - 1);
+                        }
+                    }
+                    string url = null;
+                    int dd = o.IndexOf("\"downloads\"");
+                    if (dd >= 0)
+                    {
+                        int s1 = o.IndexOf('"', o.IndexOf('[', dd) + 1);
+                        int s2 = s1 >= 0 ? o.IndexOf('"', s1 + 1) : -1;
+                        if (s1 >= 0 && s2 > s1) url = o.Substring(s1 + 1, s2 - s1 - 1);
+                    }
+                    if (url == null) { r.Errors.Add(rel + ": keine URL"); continue; }
+                    if (!(url.StartsWith("https://cdn.modrinth.com/") || url.StartsWith("https://edge.forgecdn.net/")))
+                    { r.Errors.Add(rel + ": Quelle nicht vertrauenswürdig"); continue; }
+                    string dest = Path.Combine(InstanceInstaller.InstanceDir(p), rel.Replace('/', Path.DirectorySeparatorChar));
+                    Directory.CreateDirectory(Path.GetDirectoryName(dest));
+                    if (prog != null) prog.Label = Path.GetFileName(dest);
+                    DownloadCenter.Download(url, dest, prog, ct);
+                    if (sha512 != null && sha512.Length == 128)
+                    {
+                        string got = HashCheck.Sha512Of(dest);
+                        if (!string.Equals(got, sha512, StringComparison.OrdinalIgnoreCase))
+                        {
+                            try { File.Delete(dest); } catch { }
+                            r.Errors.Add(rel + ": Hash mismatch");
+                            continue;
+                        }
+                    }
+                    r.FilesOk++;
+                }
+                catch (Exception ex) { r.Errors.Add("Datei " + i + ": " + ex.Message); }
+            }
+            try { Directory.Delete(tmp, true); } catch { }
+            return r;
         }
     }
 }

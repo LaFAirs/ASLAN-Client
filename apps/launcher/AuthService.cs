@@ -1,15 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
 
-namespace Vyra
+namespace Aslan
 {
-    // Offizieller Microsoft-Device-Code-Flow:
-    // 1) POST https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode
-    // 2) Benutzer bestätigt im Browser
-    // 3) Poll auf .../token. Keine Passwortabfrage, kein Passwort-Speicher.
     public sealed class DeviceCodeInfo
     {
         public string UserCode;
@@ -28,17 +25,32 @@ namespace Vyra
         public bool Online;
     }
 
+    // Mehrere Microsoft-Accounts: Liste in aslan_accounts.json, Tokens je Account per DPAPI.
     public static class AuthService
     {
         public static string ClientId = "00000000-0000-0000-0000-000000000000";
-        public const string TokenFile = "ms_token.dat";
-        public const string ProfileFile = "ms_profile.json";
+        public const string AccountsFile = "aslan_accounts.json";
+
+        public sealed class Entry
+        {
+            public string Name = "";
+            public string Uuid = "";
+        }
+
+        public static List<Entry> Accounts = new List<Entry>();
+        public static string ActiveName = "";
+
+        public static void Init()
+        {
+            LoadClientId();
+            LoadAccounts();
+        }
 
         public static void LoadClientId()
         {
             try
             {
-                string p = Path.Combine(VyraPaths.BaseDir, "ms_client.txt");
+                string p = Path.Combine(AslanPaths.BaseDir, "ms_client.txt");
                 if (File.Exists(p))
                 {
                     string v = File.ReadAllText(p, Encoding.UTF8).Trim();
@@ -50,7 +62,7 @@ namespace Vyra
 
         public static void SaveClientId(string id)
         {
-            try { File.WriteAllText(Path.Combine(VyraPaths.BaseDir, "ms_client.txt"), id, Encoding.UTF8); }
+            try { File.WriteAllText(Path.Combine(AslanPaths.BaseDir, "ms_client.txt"), id, Encoding.UTF8); }
             catch { }
             ClientId = id;
         }
@@ -60,13 +72,93 @@ namespace Vyra
             return ClientId == "00000000-0000-0000-0000-000000000000";
         }
 
+        private static string AccountsPath() { return Path.Combine(AslanPaths.BaseDir, AccountsFile); }
+
+        public static void LoadAccounts()
+        {
+            Accounts.Clear();
+            try
+            {
+                if (!File.Exists(AccountsPath())) return;
+                string json = File.ReadAllText(AccountsPath(), Encoding.UTF8);
+                ActiveName = MiniJson.ExtractString(json, "active", "");
+                int ai = json.IndexOf("\"accounts\"");
+                if (ai < 0) return;
+                List<string> objs = JsonScan.SplitObjects(json.Substring(ai), "accounts", 20);
+                for (int i = 0; i < objs.Count; i++)
+                {
+                    Entry e = new Entry();
+                    e.Name = MiniJson.ExtractString(objs[i], "name", null);
+                    e.Uuid = MiniJson.ExtractString(objs[i], "uuid", "");
+                    if (e.Name != null) Accounts.Add(e);
+                }
+            }
+            catch { }
+        }
+
+        public static void SaveAccounts()
+        {
+            try
+            {
+                StringBuilder sb = new StringBuilder("{\"active\":\"");
+                sb.Append(ActiveName.Replace("\"", "")).Append("\",\"accounts\":[");
+                for (int i = 0; i < Accounts.Count; i++)
+                {
+                    if (i > 0) sb.Append(",");
+                    sb.Append("{\"name\":\"").Append(Accounts[i].Name.Replace("\"", "")).Append("\",\"uuid\":\"").Append(Accounts[i].Uuid).Append("\"}");
+                }
+                sb.Append("]}");
+                File.WriteAllText(AccountsPath(), sb.ToString(), Encoding.UTF8);
+            }
+            catch { }
+        }
+
+        private static string TokenKey(string name) { return "mc_" + name + ".dat"; }
+
+        public static McAccount GetActive(string fallbackName)
+        {
+            McAccount a = new McAccount();
+            for (int i = 0; i < Accounts.Count; i++)
+            {
+                if (Accounts[i].Name == ActiveName)
+                {
+                    a.Name = Accounts[i].Name;
+                    a.Uuid = Accounts[i].Uuid;
+                    a.AccessToken = DpapiStore.Load(TokenKey(a.Name));
+                    a.Online = a.AccessToken != null;
+                    if (!a.Online) a.AccessToken = "-";
+                    return a;
+                }
+            }
+            a.Name = fallbackName;
+            a.Uuid = InstanceInstaller.OfflineUuid(fallbackName);
+            a.AccessToken = "-";
+            a.Online = false;
+            return a;
+        }
+
+        public static void SwitchTo(string name)
+        {
+            ActiveName = name;
+            SaveAccounts();
+        }
+
+        public static void Remove(string name)
+        {
+            for (int i = 0; i < Accounts.Count; i++)
+                if (Accounts[i].Name == name) { Accounts.RemoveAt(i); break; }
+            DpapiStore.Delete(TokenKey(name));
+            if (ActiveName == name) ActiveName = Accounts.Count > 0 ? Accounts[0].Name : "";
+            SaveAccounts();
+        }
+
         private static string Post(string url, string body)
         {
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.Method = "POST";
             req.ContentType = "application/x-www-form-urlencoded";
             req.Timeout = 20000;
-            req.UserAgent = "VYRA-Client/0.2";
+            req.UserAgent = "ASLAN-Client/0.3";
             byte[] b = Encoding.UTF8.GetBytes(body);
             req.ContentLength = b.Length;
             using (Stream s = req.GetRequestStream()) s.Write(b, 0, b.Length);
@@ -81,7 +173,7 @@ namespace Vyra
         public static DeviceCodeInfo StartDeviceCode()
         {
             if (HasPlaceholderId())
-                throw new Exception("Keine Microsoft App-ID hinterlegt. Bitte in den Einstellungen eine eigene Azure-App-ID eintragen (siehe Docs/ANMELDUNG.md).");
+                throw new Exception("Keine Microsoft App-ID hinterlegt (Einstellungen → Microsoft App-ID, siehe Docs/ANMELDUNG.md).");
             string scope = Uri.EscapeDataString("XboxLive.signin offline_access");
             string body = "client_id=" + Uri.EscapeDataString(ClientId) + "&scope=" + scope;
             string json = Post("https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode", body);
@@ -114,7 +206,7 @@ namespace Vyra
                     string rt = MiniJson.ExtractString(json, "refresh_token", null);
                     if (at != null)
                     {
-                        DpapiStore.Save(TokenFile, at);
+                        DpapiStore.Save("ms_token.dat", at);
                         if (rt != null) DpapiStore.Save("ms_refresh.dat", rt);
                         return at;
                     }
@@ -142,7 +234,6 @@ namespace Vyra
             throw new Exception("Zeitüberschreitung — bitte erneut versuchen.");
         }
 
-        // Xbox/XSTS/Minecraft-Entitlement (echt, offiziell). Gibt Account mit UUID/Token zurück.
         public static McAccount CompleteMinecraftLogin(string msAccessToken)
         {
             string xbl = PostJson("https://user.auth.xboxlive.com/user/authenticate",
@@ -158,12 +249,23 @@ namespace Vyra
                 "{\"identityToken\":\"XBL3.0 x=" + uhs + ";" + xstsToken + "\"}");
             string mcToken = MiniJson.ExtractString(mc, "access_token", null);
             if (mcToken == null) throw new Exception("Minecraft-Login fehlgeschlagen.");
-            DpapiStore.Save("mc_token.dat", mcToken);
             string profile = HttpBearerExt.Get("https://api.minecraftservices.com/minecraft/profile", 20000, mcToken);
             string name = MiniJson.ExtractString(profile, "name", null);
             string id = MiniJson.ExtractString(profile, "id", null);
             if (name == null) throw new Exception("Account besitzt kein Minecraft-Profil (keine Java-Berechtigung).");
-            try { File.WriteAllText(Path.Combine(VyraPaths.BaseDir, ProfileFile), profile, Encoding.UTF8); } catch { }
+            DpapiStore.Save(TokenKey(name), mcToken);
+            bool found = false;
+            for (int i = 0; i < Accounts.Count; i++)
+                if (Accounts[i].Name == name) { Accounts[i].Uuid = id ?? ""; found = true; }
+            if (!found)
+            {
+                Entry e = new Entry();
+                e.Name = name;
+                e.Uuid = id ?? "";
+                Accounts.Add(e);
+            }
+            ActiveName = name;
+            SaveAccounts();
             McAccount a = new McAccount();
             a.Name = name;
             a.Uuid = id != null ? id : InstanceInstaller.OfflineUuid(name);
@@ -179,7 +281,7 @@ namespace Vyra
             req.ContentType = "application/json";
             req.Accept = "application/json";
             req.Timeout = 20000;
-            req.UserAgent = "VYRA-Client/0.2";
+            req.UserAgent = "ASLAN-Client/0.3";
             byte[] b = Encoding.UTF8.GetBytes(json);
             req.ContentLength = b.Length;
             using (Stream s = req.GetRequestStream()) s.Write(b, 0, b.Length);
@@ -205,50 +307,6 @@ namespace Vyra
             }
             catch { return null; }
         }
-
-        public static string StoredProfileName()
-        {
-            try
-            {
-                string p = Path.Combine(VyraPaths.BaseDir, ProfileFile);
-                if (!File.Exists(p)) return null;
-                return MiniJson.ExtractString(File.ReadAllText(p, Encoding.UTF8), "name", null);
-            }
-            catch { return null; }
-        }
-
-        public static McAccount StoredAccount(string fallbackName)
-        {
-            McAccount a = new McAccount();
-            try
-            {
-                string p = Path.Combine(VyraPaths.BaseDir, ProfileFile);
-                if (File.Exists(p))
-                {
-                    string json = File.ReadAllText(p, Encoding.UTF8);
-                    a.Name = MiniJson.ExtractString(json, "name", fallbackName);
-                    a.Uuid = MiniJson.ExtractString(json, "id", InstanceInstaller.OfflineUuid(a.Name));
-                    a.AccessToken = DpapiStore.Load("mc_token.dat");
-                    a.Online = a.AccessToken != null;
-                    if (!a.Online) a.AccessToken = "-";
-                    return a;
-                }
-            }
-            catch { }
-            a.Name = fallbackName;
-            a.Uuid = InstanceInstaller.OfflineUuid(fallbackName);
-            a.AccessToken = "-";
-            a.Online = false;
-            return a;
-        }
-
-        public static void Logout()
-        {
-            DpapiStore.Delete(TokenFile);
-            DpapiStore.Delete("ms_refresh.dat");
-            DpapiStore.Delete("mc_token.dat");
-            try { File.Delete(Path.Combine(VyraPaths.BaseDir, ProfileFile)); } catch { }
-        }
     }
 
     internal static class HttpBearerExt
@@ -258,7 +316,7 @@ namespace Vyra
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             req.Method = "GET";
             req.Timeout = timeoutMs;
-            req.UserAgent = "VYRA-Client/0.2";
+            req.UserAgent = "ASLAN-Client/0.3";
             req.Headers["Authorization"] = "Bearer " + bearer;
             using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
             using (Stream s = resp.GetResponseStream())

@@ -2,13 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 
-namespace Vyra
+namespace Aslan
 {
     public sealed class InstallProgress
     {
@@ -36,7 +35,6 @@ namespace Vyra
 
     internal static class JsonScan
     {
-        // Teilt ein JSON-Array (ab Index von '[') in seine Top-Level-Objekte.
         public static List<string> SplitObjects(string json, string arrayKey, int max)
         {
             List<string> list = new List<string>();
@@ -165,26 +163,20 @@ namespace Vyra
 
     public static class InstanceInstaller
     {
-        public static string InstanceDir(GameProfile p)
+        public static string InstanceDir(AslanProfile p)
         {
-            string d = Path.Combine(VyraPaths.ProfilesDir, MinecraftService.SafeName(p.Name));
+            string d = Path.Combine(AslanPaths.ProfilesDir, MinecraftService.SafeName(p.Name));
             Directory.CreateDirectory(d);
             return d;
         }
 
-        public static string NativesDir(GameProfile p, string mcVersion)
+        public static string NativesDir(AslanProfile p, string mcVersion)
         {
             string d = Path.Combine(InstanceDir(p), "natives", mcVersion);
             Directory.CreateDirectory(d);
             return d;
         }
 
-        // Regeln (Mojang-Semantik, verifiziert gegen echtes 26.2-JSON):
-        // - keine Regeln -> erlaubt
-        // - mit Regeln -> letzte zutreffende Regel entscheidet
-        // - keine zutreffende Regel -> NICHT erlaubt (z. B. osx-only Natives auf Windows)
-        // - features-Regeln (demo/quickplay) treffen bei VYRA nie zu
-        // - os.versionRange {min,max} wird numerisch verglichen
         public static bool AllowedByRules(string rulesArrayOrNull)
         {
             if (rulesArrayOrNull == null) return true;
@@ -269,10 +261,16 @@ namespace Vyra
             return 21;
         }
 
+        public static bool IsNativesLib(LibEntry e)
+        {
+            if (e == null || e.Name == null) return false;
+            return e.Name.ToLowerInvariant().Contains(":natives-");
+        }
+
         public static List<LibEntry> ParseLibraries(string versionJson)
         {
             List<LibEntry> libs = new List<LibEntry>();
-            List<string> objs = JsonScan.SplitObjects(versionJson, "libraries", 500);
+            List<string> objs = JsonScan.SplitObjects(versionJson, "libraries", 600);
             for (int i = 0; i < objs.Count; i++)
             {
                 string o = objs[i];
@@ -311,12 +309,6 @@ namespace Vyra
             return libs;
         }
 
-        public static bool IsNativesLib(LibEntry e)
-        {
-            if (e == null || e.Name == null) return false;
-            return e.Name.ToLowerInvariant().Contains(":natives-");
-        }
-
         public static string MavenPath(string coords, string ext)
         {
             string[] parts = coords.Split(':');
@@ -339,7 +331,7 @@ namespace Vyra
             DownloadProgress dp = new DownloadProgress();
             dp.Label = Path.GetFileName(dest);
             if (pr != null) pr.CurrentFile = dp.Label;
-            Http.Download(url, dest, dp, ct);
+            DownloadCenter.Download(url, dest, dp, ct);
             if (pr != null)
             {
                 pr.DoneFiles++;
@@ -347,7 +339,49 @@ namespace Vyra
             }
         }
 
-        public static void EnsureInstalled(GameProfile p, string loaderVersion, InstallProgress pr, CancellationToken ct)
+        // ---------- Versions-JSON auflösen (je Loader) ----------
+        public static string ResolveVersionJson(AslanProfile p)
+        {
+            if (p.Loader == "forge" || p.Loader == "neoforge")
+            {
+                string found = DetectModdedVersionJson(p);
+                if (found != null) return found;
+            }
+            return MinecraftService.EnsureVersionJson(p.MinecraftVersion);
+        }
+
+        // Sucht vom (assistierten) Installer erzeugte Forge/NeoForge-Version-JSONs.
+        public static string DetectModdedVersionJson(AslanProfile p)
+        {
+            try
+            {
+                List<string> dirs = new List<string>();
+                dirs.Add(Path.Combine(InstanceDir(p), "versions"));
+                dirs.Add(AslanPaths.VersionsDir);
+                for (int d = 0; d < dirs.Count; d++)
+                {
+                    if (!Directory.Exists(dirs[d])) continue;
+                    string[] sub = Directory.GetDirectories(dirs[d]);
+                    for (int i = 0; i < sub.Length; i++)
+                    {
+                        string n = Path.GetFileName(sub[i]).ToLowerInvariant();
+                        bool match = p.Loader == "forge" ? n.Contains("forge") : (n.Contains("neoforge") || n.Contains("neo-forge"));
+                        if (!match) continue;
+                        string[] jsons = Directory.GetFiles(sub[i], "*.json");
+                        for (int j = 0; j < jsons.Length; j++)
+                        {
+                            string c = File.ReadAllText(jsons[j], Encoding.UTF8);
+                            if (c.Contains(p.MinecraftVersion) || c.Contains("\"id\"")) return jsons[j];
+                        }
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        // ---------- Vollständige Installation ----------
+        public static void EnsureInstalled(AslanProfile p, string loaderVersion, InstallProgress pr, CancellationToken ct)
         {
             if (pr != null) { pr.Phase = "Versionsmanifest"; }
             string versionJsonPath = MinecraftService.EnsureVersionJson(p.MinecraftVersion);
@@ -356,7 +390,7 @@ namespace Vyra
             if (pr != null) pr.Phase = "Client-JAR";
             string dlBlock = JsonScan.Block(vj, "downloads");
             string clientBlock = dlBlock != null ? JsonScan.Block(dlBlock, "client") : null;
-            string clientDir = Path.Combine(VyraPaths.VersionsDir, p.MinecraftVersion);
+            string clientDir = Path.Combine(AslanPaths.VersionsDir, p.MinecraftVersion);
             string clientJar = Path.Combine(clientDir, p.MinecraftVersion + ".jar");
             if (clientBlock != null)
             {
@@ -380,7 +414,7 @@ namespace Vyra
             {
                 ThrowIfCancel(pr);
                 LibEntry e = wanted[i];
-                string dest = Path.Combine(VyraPaths.LibrariesDir, e.Path.Replace('/', Path.DirectorySeparatorChar));
+                string dest = Path.Combine(AslanPaths.LibrariesDir, e.Path.Replace('/', Path.DirectorySeparatorChar));
                 if (e.NativesKey != null)
                 {
                     string o = FindLibObject(vj, e.Name);
@@ -392,7 +426,7 @@ namespace Vyra
                         string npath = MiniJson.ExtractString(nativeObj, "path", null);
                         string nsha = MiniJson.ExtractString(nativeObj, "sha1", null);
                         string nurl = MiniJson.ExtractString(nativeObj, "url", null);
-                        string ndest = Path.Combine(VyraPaths.LibrariesDir, (npath ?? e.Path).Replace('/', Path.DirectorySeparatorChar));
+                        string ndest = Path.Combine(AslanPaths.LibrariesDir, (npath ?? e.Path).Replace('/', Path.DirectorySeparatorChar));
                         if (nurl != null && !HashCheck.Matches(ndest, nsha)) Dl(nurl, ndest, pr, ct);
                         if (File.Exists(ndest)) ExtractNatives(ndest, nativesDir);
                         else if (pr != null) pr.DoneFiles++;
@@ -402,8 +436,6 @@ namespace Vyra
                 }
                 if (e.Url != null && !HashCheck.Matches(dest, e.Sha1)) Dl(e.Url, dest, pr, ct);
                 else if (pr != null) pr.DoneFiles++;
-                // Natives im neuen Stil (Classifier :natives-*) zusätzlich extrahieren
-                // (sie bleiben zusätzlich auf dem Classpath — wie beim Vanilla-Launcher).
                 if (IsNativesLib(e) && File.Exists(dest)) ExtractNatives(dest, nativesDir);
             }
 
@@ -414,7 +446,7 @@ namespace Vyra
                 string aid = MiniJson.ExtractString(aiBlock, "id", null);
                 string asha = MiniJson.ExtractString(aiBlock, "sha1", null);
                 string aurl = MiniJson.ExtractString(aiBlock, "url", null);
-                string idxPath = Path.Combine(VyraPaths.AssetsDir, "indexes", aid + ".json");
+                string idxPath = Path.Combine(AslanPaths.AssetsDir, "indexes", aid + ".json");
                 if (aurl != null && !HashCheck.Matches(idxPath, asha))
                 {
                     if (pr != null) pr.TotalFiles++;
@@ -428,7 +460,7 @@ namespace Vyra
                 {
                     ThrowIfCancel(pr);
                     string hash = assets[i][0];
-                    string sub = Path.Combine(VyraPaths.AssetsDir, "objects", hash.Substring(0, 2), hash);
+                    string sub = Path.Combine(AslanPaths.AssetsDir, "objects", hash.Substring(0, 2), hash);
                     if (!HashCheck.Matches(sub, hash))
                         Dl("https://resources.download.minecraft.net/" + hash.Substring(0, 2) + "/" + hash, sub, pr, ct);
                     else if (pr != null) pr.DoneFiles++;
@@ -447,7 +479,7 @@ namespace Vyra
                         string id = MiniJson.ExtractString(file, "id", null);
                         string sha = MiniJson.ExtractString(file, "sha1", null);
                         string url = MiniJson.ExtractString(file, "url", null);
-                        string dest = Path.Combine(VyraPaths.AssetsDir, "log_configs", id);
+                        string dest = Path.Combine(AslanPaths.AssetsDir, "log_configs", id);
                         if (url != null && id != null && !HashCheck.Matches(dest, sha))
                         {
                             if (pr != null) { pr.Phase = "Logging-Config"; pr.TotalFiles++; }
@@ -458,25 +490,22 @@ namespace Vyra
             }
             catch { }
 
-            if (p.Loader == "fabric")
-            {
-                if (pr != null) pr.Phase = "Fabric";
-                EnsureFabric(p, loaderVersion, pr, ct);
-            }
+            EnsureLoader(p, loaderVersion, pr, ct);
 
-            // VYRA-Mod nur in Instanzen ihrer Zielversion einlegen (ehrlich, kein Fake).
+            // ASLAN-Mod nur bei Fabric/Quilt + passender MC-Version einlegen.
             try
             {
-                string selfMod = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vyra-client.jar");
+                string selfMod = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "aslan-client.jar");
+                if (!File.Exists(selfMod)) selfMod = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "vyra-client.jar");
                 if (File.Exists(selfMod))
                 {
-                    if (p.MinecraftVersion == MinecraftService.ModMinecraftVersion)
+                    if ((p.Loader == "fabric" || p.Loader == "quilt") && p.MinecraftVersion == MinecraftService.ModMinecraftVersion)
                     {
-                        string dest = Path.Combine(InstanceDir(p), "mods", "vyra-client.jar");
+                        string dest = Path.Combine(InstanceDir(p), "mods", Path.GetFileName(selfMod));
                         Directory.CreateDirectory(Path.GetDirectoryName(dest));
                         File.Copy(selfMod, dest, true);
                     }
-                    else Logger.Info("VYRA-Mod: Instanz ist MC " + p.MinecraftVersion + ", Mod braucht " + MinecraftService.ModMinecraftVersion + " — übersprungen.");
+                    else Logger.Info("Client-Mod übersprungen (Loader " + p.Loader + ", MC " + p.MinecraftVersion + ").");
                 }
             }
             catch (Exception ex) { Logger.Warn("Mod copy: " + ex.Message); }
@@ -484,9 +513,191 @@ namespace Vyra
             if (pr != null) { pr.Phase = "Fertig"; pr.CurrentFile = ""; }
         }
 
+        // ---------- Loader ----------
+        public static void EnsureLoader(AslanProfile p, string loaderVersion, InstallProgress pr, CancellationToken ct)
+        {
+            string loader = p.Loader != null ? p.Loader.ToLowerInvariant() : "vanilla";
+            string ver = loaderVersion != null && loaderVersion.Length > 0 ? loaderVersion : p.LoaderVersion;
+            if (loader == "vanilla" || loader.Length == 0) return;
+            if (loader == "fabric")
+            {
+                if (pr != null) pr.Phase = "Fabric";
+                EnsureFabricLike(p, ver, "https://meta.fabricmc.net", "https://maven.fabricmc.net/",
+                    "loader", "intermediary", "net.fabricmc.loader.impl.launch.knot.KnotClient", pr, ct);
+                return;
+            }
+            if (loader == "quilt")
+            {
+                if (pr != null) pr.Phase = "Quilt";
+                EnsureFabricLike(p, ver, "https://meta.quiltmc.org", "https://maven.quiltmc.org/repository/release/",
+                    "loader", "hashed", "org.quiltmc.loader.impl.launch.knot.KnotClient", pr, ct);
+                return;
+            }
+            if (loader == "forge" || loader == "neoforge")
+            {
+                if (pr != null) pr.Phase = loader == "forge" ? "Forge" : "NeoForge";
+                EnsureForged(p, ver, loader == "forge", pr, ct);
+                return;
+            }
+            throw new Exception("Unbekannter Loader: " + p.Loader);
+        }
+
+        // Gemeinsame Logik für Fabric- und Quilt-Meta (gleiches Format, v2/v3).
+        public static void EnsureFabricLike(AslanProfile p, string loaderVersion, string metaBase, string mavenDefault,
+            string loaderEp, string mapEp, string mainFallback, InstallProgress pr, CancellationToken ct)
+        {
+            string loader = loaderVersion;
+            string meta = Http.Get(metaBase + "/v" + (metaBase.Contains("quilt") ? "3" : "2") + "/versions/" + loaderEp + "/" + Uri.EscapeDataString(p.MinecraftVersion) + "/" + Uri.EscapeDataString(loader), 20000);
+            string lm = JsonScan.Block(meta, "launcherMeta");
+            string mcBlock = lm != null ? JsonScan.Block(lm, "mainClass") : null;
+            string mainClient = mcBlock != null ? MiniJson.ExtractString(mcBlock, "client", mainFallback) : mainFallback;
+            File.WriteAllText(Path.Combine(InstanceDir(p), "loader-mainclass.txt"), mainClient, Encoding.UTF8);
+
+            string libsBlock = lm != null ? JsonScan.Block(lm, "libraries") : null;
+            List<string> allLibObjs = new List<string>();
+            if (libsBlock != null)
+            {
+                string common = JsonScan.Block(libsBlock, "common");
+                string client = JsonScan.Block(libsBlock, "client");
+                if (common != null) allLibObjs.AddRange(JsonScan.SplitObjects("{\"libraries\":" + common + "}", "libraries", 200));
+                if (client != null) allLibObjs.AddRange(JsonScan.SplitObjects("{\"libraries\":" + client + "}", "libraries", 200));
+            }
+            string coords = metaBase.Contains("quilt") ? "org.quiltmc:quilt-loader:" + loader : "net.fabricmc:fabric-loader:" + loader;
+            allLibObjs.Add("{\"name\":\"" + coords + "\"}");
+            string im = Http.Get(metaBase + "/v" + (metaBase.Contains("quilt") ? "3" : "2") + "/versions/" + (metaBase.Contains("quilt") ? "quilt-mappings" : mapEp) + "/" + Uri.EscapeDataString(p.MinecraftVersion), 20000);
+            string imMaven = null;
+            {
+                Regex r = new Regex("\"maven\"\\s*:\\s*\"([^\"]+)\"");
+                Match m = r.Match(im);
+                if (m.Success) imMaven = m.Groups[1].Value;
+            }
+            if (imMaven != null) allLibObjs.Add("{\"name\":\"" + imMaven + "\"}");
+
+            if (pr != null) pr.TotalFiles += allLibObjs.Count;
+            List<string> downloaded = new List<string>();
+            for (int i = 0; i < allLibObjs.Count; i++)
+            {
+                ThrowIfCancel(pr);
+                string name = MiniJson.ExtractString(allLibObjs[i], "name", null);
+                string url = MiniJson.ExtractString(allLibObjs[i], "url", mavenDefault);
+                if (name == null) { if (pr != null) pr.DoneFiles++; continue; }
+                if (!url.EndsWith("/")) url += "/";
+                string rel = MavenPath(name, ".jar");
+                string dest = Path.Combine(AslanPaths.LibrariesDir, rel.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(dest) || new FileInfo(dest).Length < 1000)
+                    Dl(url + rel, dest, pr, ct);
+                else if (pr != null) pr.DoneFiles++;
+                downloaded.Add(dest);
+            }
+            try { File.WriteAllLines(Path.Combine(InstanceDir(p), "loader-classpath.txt"), downloaded.ToArray(), Encoding.UTF8); }
+            catch { }
+        }
+
+        // ----- Forge / NeoForge -----
+        public static List<string> FetchForgeVersions(string mc)
+        {
+            List<string> out_ = new List<string>();
+            try
+            {
+                string xml = Http.Get("https://files.minecraftforge.net/maven/net/minecraftforge/forge/maven-metadata.xml", 20000);
+                Regex r = new Regex("<version>([^<]+)</version>");
+                foreach (Match m in r.Matches(xml))
+                {
+                    string v = m.Groups[1].Value;
+                    if (v.StartsWith(mc + "-")) out_.Add(v.Substring(mc.Length + 1));
+                }
+            }
+            catch (Exception ex) { Logger.Warn("Forge-Meta: " + ex.Message); }
+            return out_;
+        }
+
+        public static List<string> FetchNeoForgeVersions(string mc)
+        {
+            List<string> out_ = new List<string>();
+            try
+            {
+                string xml = Http.Get("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml", 20000);
+                // NeoForge-Versionen wie 21.1.0 (Major = MC-Minor). Filter grob:
+                Regex r = new Regex("<version>([^<]+)</version>");
+                foreach (Match m in r.Matches(xml))
+                {
+                    string v = m.Groups[1].Value;
+                    if (NeoForgeMatches(v, mc)) out_.Add(v);
+                }
+            }
+            catch (Exception ex) { Logger.Warn("NeoForge-Meta: " + ex.Message); }
+            return out_;
+        }
+
+        private static bool NeoForgeMatches(string neoVer, string mc)
+        {
+            try
+            {
+                // NeoForge 21.x.y <-> MC 1.21(.z). Grob: Major 20->1.20, 21->1.21, 26->26.x
+                string[] n = neoVer.Split('.');
+                string[] m = mc.Split('.');
+                if (m[0] == "1" && m.Length > 1) return n[0] == m[1];
+                return n[0] == m[0];
+            }
+            catch { return false; }
+        }
+
+        public static string ForgeInstallerUrl(string mc, string forgeVer)
+        {
+            string v = mc + "-" + forgeVer;
+            return "https://maven.minecraftforge.net/net/minecraftforge/forge/" + v + "/forge-" + v + "-installer.jar";
+        }
+
+        public static string NeoForgeInstallerUrl(string neoVer)
+        {
+            return "https://maven.neoforged.net/releases/net/neoforged/neoforge/" + neoVer + "/neoforge-" + neoVer + "-installer.jar";
+        }
+
+        // Assistierte Installation: lädt den OFFIZIELLEN Installer und führt ihn aus.
+        // Der Benutzer bestätigt im Installer den Instanz-Ordner; danach erkennt
+        // ASLAN die installierte Version und startet sie (Verify + PLAY).
+        public static string EnsureForged(AslanProfile p, string loaderVersion, bool forge, InstallProgress pr, CancellationToken ct)
+        {
+            string existing = DetectModdedVersionJson(p);
+            if (existing != null)
+            {
+                if (pr != null) pr.Phase = "Bereits installiert";
+                return existing;
+            }
+            string url;
+            string fileName;
+            if (forge)
+            {
+                List<string> vs = FetchForgeVersions(p.MinecraftVersion);
+                string ver = loaderVersion != null && loaderVersion.Length > 0 && loaderVersion != "latest" ? loaderVersion : (vs.Count > 0 ? vs[vs.Count - 1] : null);
+                if (ver == null) throw new Exception("Keine Forge-Version für MC " + p.MinecraftVersion + " gefunden.");
+                p.LoaderVersion = ver;
+                url = ForgeInstallerUrl(p.MinecraftVersion, ver);
+                fileName = "forge-" + p.MinecraftVersion + "-" + ver + "-installer.jar";
+            }
+            else
+            {
+                List<string> vs = FetchNeoForgeVersions(p.MinecraftVersion);
+                string ver = loaderVersion != null && loaderVersion.Length > 0 && loaderVersion != "latest" ? loaderVersion : (vs.Count > 0 ? vs[vs.Count - 1] : null);
+                if (ver == null) throw new Exception("Keine NeoForge-Version für MC " + p.MinecraftVersion + " gefunden.");
+                p.LoaderVersion = ver;
+                url = NeoForgeInstallerUrl(ver);
+                fileName = "neoforge-" + ver + "-installer.jar";
+            }
+            string dest = Path.Combine(AslanPaths.CacheDir, fileName);
+            if (!File.Exists(dest) || new FileInfo(dest).Length < 100000)
+            {
+                if (pr != null) { pr.Phase = "Installer-Download"; pr.TotalFiles++; }
+                Dl(url, dest, pr, ct);
+            }
+            // Installer starten (offizielles Programm; Zielordner = Instanz).
+            // Rückgabe: Pfad, damit die UI eine Anleitung mit Ordner zeigen kann.
+            return "ASSISTED:" + dest + "|" + InstanceDir(p);
+        }
+
         private static string FindLibObject(string vj, string name)
         {
-            List<string> objs = JsonScan.SplitObjects(vj, "libraries", 500);
+            List<string> objs = JsonScan.SplitObjects(vj, "libraries", 600);
             for (int i = 0; i < objs.Count; i++)
                 if (MiniJson.ExtractString(objs[i], "name", "") == name) return objs[i];
             return null;
@@ -555,67 +766,16 @@ namespace Vyra
             return list;
         }
 
-        public static void EnsureFabric(GameProfile p, string loaderVersion, InstallProgress pr, CancellationToken ct)
-        {
-            string loader = loaderVersion != null && loaderVersion.Length > 0 ? loaderVersion : p.LoaderVersion;
-            string meta = Http.Get("https://meta.fabricmc.net/v2/versions/loader/" + Uri.EscapeDataString(p.MinecraftVersion) + "/" + Uri.EscapeDataString(loader), 20000);
-            string lm = JsonScan.Block(meta, "launcherMeta");
-            string mcBlock = lm != null ? JsonScan.Block(lm, "mainClass") : null;
-            string mainClient = mcBlock != null ? MiniJson.ExtractString(mcBlock, "client", "net.fabricmc.loader.impl.launch.knot.KnotClient") : "net.fabricmc.loader.impl.launch.knot.KnotClient";
-            File.WriteAllText(Path.Combine(InstanceDir(p), "fabric-mainclass.txt"), mainClient, Encoding.UTF8);
-
-            string libsBlock = lm != null ? JsonScan.Block(lm, "libraries") : null;
-            List<string> allLibObjs = new List<string>();
-            if (libsBlock != null)
-            {
-                string common = JsonScan.Block(libsBlock, "common");
-                string client = JsonScan.Block(libsBlock, "client");
-                if (common != null) allLibObjs.AddRange(JsonScan.SplitObjects("{\"libraries\":" + common + "}", "libraries", 200));
-                if (client != null) allLibObjs.AddRange(JsonScan.SplitObjects("{\"libraries\":" + client + "}", "libraries", 200));
-            }
-            string loaderCoords = "net.fabricmc:fabric-loader:" + loader;
-            allLibObjs.Add("{\"name\":\"" + loaderCoords + "\"}");
-            string im = Http.Get("https://meta.fabricmc.net/v2/versions/intermediary/" + Uri.EscapeDataString(p.MinecraftVersion), 20000);
-            string imMaven = null;
-            {
-                Regex r = new Regex("\"maven\"\\s*:\\s*\"([^\"]+)\"");
-                Match m = r.Match(im);
-                if (m.Success) imMaven = m.Groups[1].Value;
-            }
-            if (imMaven != null) allLibObjs.Add("{\"name\":\"" + imMaven + "\"}");
-
-            if (pr != null) pr.TotalFiles += allLibObjs.Count;
-            List<string> downloaded = new List<string>();
-            for (int i = 0; i < allLibObjs.Count; i++)
-            {
-                ThrowIfCancel(pr);
-                string name = MiniJson.ExtractString(allLibObjs[i], "name", null);
-                string url = MiniJson.ExtractString(allLibObjs[i], "url", "https://maven.fabricmc.net/");
-                if (name == null) { if (pr != null) pr.DoneFiles++; continue; }
-                if (!url.EndsWith("/")) url += "/";
-                string rel = MavenPath(name, ".jar");
-                string dest = Path.Combine(VyraPaths.LibrariesDir, rel.Replace('/', Path.DirectorySeparatorChar));
-                if (!File.Exists(dest) || new FileInfo(dest).Length < 1000)
-                    Dl(url + rel, dest, pr, ct);
-                else if (pr != null) pr.DoneFiles++;
-                downloaded.Add(dest);
-            }
-            // Manifest aller Fabric-JARs (Loader + Deps + Intermediary) für den Classpath.
-            try { File.WriteAllLines(Path.Combine(InstanceDir(p), "fabric-classpath.txt"), downloaded.ToArray(), Encoding.UTF8); }
-            catch { }
-        }
-
-        public static List<string> Verify(GameProfile p)
+        public static List<string> Verify(AslanProfile p)
         {
             List<string> problems = new List<string>();
             try
             {
-                string versionJsonPath = Path.Combine(VyraPaths.VersionsDir, p.MinecraftVersion, p.MinecraftVersion + ".json");
-                if (!File.Exists(versionJsonPath)) { problems.Add("Versions-JSON fehlt: " + p.MinecraftVersion); return problems; }
+                string versionJsonPath = ResolveVersionJson(p);
                 string vj = File.ReadAllText(versionJsonPath, Encoding.UTF8);
                 string dlBlock = JsonScan.Block(vj, "downloads");
                 string clientBlock = dlBlock != null ? JsonScan.Block(dlBlock, "client") : null;
-                string clientJar = Path.Combine(VyraPaths.VersionsDir, p.MinecraftVersion, p.MinecraftVersion + ".jar");
+                string clientJar = Path.Combine(AslanPaths.VersionsDir, p.MinecraftVersion, p.MinecraftVersion + ".jar");
                 if (clientBlock != null)
                 {
                     string sha1 = MiniJson.ExtractString(clientBlock, "sha1", null);
@@ -627,13 +787,15 @@ namespace Vyra
                 {
                     if (!AllowedByRules(libs[i].RulesBlock)) continue;
                     if (libs[i].NativesKey != null) continue;
-                    string dest = Path.Combine(VyraPaths.LibrariesDir, libs[i].Path.Replace('/', Path.DirectorySeparatorChar));
+                    string dest = Path.Combine(AslanPaths.LibrariesDir, libs[i].Path.Replace('/', Path.DirectorySeparatorChar));
                     if (!HashCheck.Matches(dest, libs[i].Sha1)) missing++;
                 }
                 if (missing > 0) problems.Add(missing + " Libraries fehlen oder sind beschädigt.");
                 string natDir = NativesDir(p, p.MinecraftVersion);
                 if (!Directory.Exists(natDir) || Directory.GetFiles(natDir).Length == 0)
                     problems.Add("Natives fehlen.");
+                if ((p.Loader == "forge" || p.Loader == "neoforge") && DetectModdedVersionJson(p) == null)
+                    problems.Add("Loader nicht installiert — Installer ausführen (Profil).");
             }
             catch (Exception ex) { problems.Add("Verify-Fehler: " + ex.Message); }
             return problems;
@@ -647,13 +809,13 @@ namespace Vyra
             public string MainClass;
         }
 
-        public static LaunchPlan BuildPlan(GameProfile p, string playerName, string uuid, string accessToken, string javaExe, string loaderVersion)
+        public static LaunchPlan BuildPlan(AslanProfile p, string playerName, string uuid, string accessToken, string javaExe, string loaderVersion)
         {
-            string versionJsonPath = Path.Combine(VyraPaths.VersionsDir, p.MinecraftVersion, p.MinecraftVersion + ".json");
+            string versionJsonPath = ResolveVersionJson(p);
             string vj = File.ReadAllText(versionJsonPath, Encoding.UTF8);
             string instDir = InstanceDir(p);
             string nativesDir = NativesDir(p, p.MinecraftVersion);
-            string assetsRoot = VyraPaths.AssetsDir;
+            string assetsRoot = AslanPaths.AssetsDir;
 
             string assetId = "legacy";
             try
@@ -664,17 +826,22 @@ namespace Vyra
             catch { }
 
             List<string> cp = new List<string>();
-            cp.Add(Path.Combine(VyraPaths.VersionsDir, p.MinecraftVersion, p.MinecraftVersion + ".jar"));
+            cp.Add(Path.Combine(AslanPaths.VersionsDir, p.MinecraftVersion, p.MinecraftVersion + ".jar"));
             List<LibEntry> libs = ParseLibraries(vj);
             for (int i = 0; i < libs.Count; i++)
             {
                 if (!AllowedByRules(libs[i].RulesBlock)) continue;
                 if (libs[i].NativesKey != null) continue;
-                cp.Add(Path.Combine(VyraPaths.LibrariesDir, libs[i].Path.Replace('/', Path.DirectorySeparatorChar)));
+                string f = libs[i].Path.StartsWith("net/minecraftforge") || libs[i].Path.StartsWith("net/neoforged") || Path.IsPathRooted(libs[i].Path)
+                    ? libs[i].Path.Replace('/', Path.DirectorySeparatorChar)
+                    : Path.Combine(AslanPaths.LibrariesDir, libs[i].Path.Replace('/', Path.DirectorySeparatorChar));
+                // Forge-Libs liegen ggf. absolut (Installer-Export) — sonst globaler Libraries-Ordner.
+                if (!File.Exists(f)) f = Path.Combine(AslanPaths.LibrariesDir, libs[i].Path.Replace('/', Path.DirectorySeparatorChar));
+                if (cp.IndexOf(f) < 0) cp.Add(f);
             }
             try
             {
-                string mf = Path.Combine(instDir, "fabric-classpath.txt");
+                string mf = Path.Combine(instDir, "loader-classpath.txt");
                 if (File.Exists(mf))
                 {
                     string[] lines = File.ReadAllLines(mf, Encoding.UTF8);
@@ -684,29 +851,18 @@ namespace Vyra
                         if (f.Length > 0 && File.Exists(f) && cp.IndexOf(f) < 0) cp.Add(f);
                     }
                 }
-                else
-                {
-                    string[] jars = Directory.GetFiles(VyraPaths.LibrariesDir, "*.jar", SearchOption.AllDirectories);
-                    for (int i = 0; i < jars.Length; i++)
-                    {
-                        string n = jars[i].ToLowerInvariant();
-                        if ((n.Contains("fabric-loader") || n.Contains("intermediary")) && cp.IndexOf(jars[i]) < 0)
-                            cp.Add(jars[i]);
-                    }
-                }
             }
             catch { }
 
             string mainClass = MiniJson.ExtractString(vj, "mainClass", "net.minecraft.client.main.Main");
-            if (p.Loader == "fabric")
+            if (p.Loader == "fabric" || p.Loader == "quilt")
             {
                 try
                 {
-                    string mc = Path.Combine(instDir, "fabric-mainclass.txt");
+                    string mc = Path.Combine(instDir, "loader-mainclass.txt");
                     if (File.Exists(mc)) mainClass = File.ReadAllText(mc, Encoding.UTF8).Trim();
-                    else mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient";
                 }
-                catch { mainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient"; }
+                catch { }
             }
 
             Dictionary<string, string> vars = new Dictionary<string, string>();
@@ -717,21 +873,25 @@ namespace Vyra
             vars["assets_index_name"] = assetId;
             vars["auth_uuid"] = uuid;
             vars["auth_access_token"] = accessToken;
-            vars["clientid"] = "vyra-client";
+            vars["clientid"] = "aslan-client";
             vars["auth_xuid"] = "0";
             vars["user_type"] = accessToken == "-" ? "legacy" : "msa";
             vars["version_type"] = MiniJson.ExtractString(vj, "type", "release");
             vars["natives_directory"] = nativesDir;
-            vars["launcher_name"] = "VYRA-Client";
-            vars["launcher_version"] = "0.2.0";
+            vars["launcher_name"] = "ASLAN-Client";
+            vars["launcher_version"] = "0.3.0";
             vars["classpath"] = string.Join(";", cp.ToArray());
             vars["classpath_separator"] = ";";
+            // Forge-Platzhalter (werden ggf. vom Installer-JSON bereits aufgelöst)
+            vars["library_directory"] = AslanPaths.LibrariesDir;
+            vars["version_name_parent"] = p.MinecraftVersion;
 
             StringBuilder jvm = new StringBuilder();
             jvm.Append("-Xmx").Append(p.RamMB).Append("M -Xms512M ");
             jvm.Append("-Djava.library.path=\"").Append(nativesDir).Append("\" ");
-            jvm.Append("-Dvyra.profile=\"").Append(p.Name).Append("\" ");
+            jvm.Append("-Daslan.profile=\"").Append(p.Name).Append("\" ");
             jvm.Append("-Dvyra.safeMode=").Append(p.SafeMode ? "true" : "false").Append(" ");
+            jvm.Append("-Daslan.safeMode=").Append(p.SafeMode ? "true" : "false").Append(" ");
             if (p.JavaArgs != null && p.JavaArgs.Trim().Length > 0) jvm.Append(p.JavaArgs).Append(" ");
 
             string argsBlock = JsonScan.Block(vj, "arguments");

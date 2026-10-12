@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "VYRA Client — Your Minecraft. Your Performance. Your Rules.",
+  title: "ASLAN CLIENT — Your Minecraft. Your Performance. Your Rules.",
   description:
     "The next generation of Minecraft performance, customization and smooth gameplay. Independent third-party project.",
 };
