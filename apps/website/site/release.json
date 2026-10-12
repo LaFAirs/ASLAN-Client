@@ -1,8 +1,5 @@
-{"version": "0.3.0", "date": "2026-10-12", "github": "", "downloadUrl": "", "files": [
+{"version": "0.3.0", "date": "2026-10-12", "github": "LaFAirs/ASLAN-Client", "downloadUrl": "https://github.com/LaFAirs/ASLAN-Client/releases/download/v0.3.0/ASLAN-Client-Setup-0.3.0.exe", "files": [
     {"name": "aslan-client-0.3.0.jar", "size": "0,1 MB", "sha256": "140b237f94d72367246e6cb54e512dcc5cff000b074a62f17db4bded17ae2b05"},
-    {"name": "ASLAN-Client-Setup-0.3.0.exe", "size": "0,0 MB", "sha256": "b02ffc4a2b02e80dedcd38c4ce9faeb8cb92540c06727b5672b5fc561926b4ad"},
-    {"name": "AslanLauncher-0.3.0.exe", "size": "0,2 MB", "sha256": "594dd7171eae078fe1e57be0915b46891c95b3ed5b01ac6dce5ba7ce0675341f"},
-    {"name": "vyra-client-0.2.0.jar", "size": "0,1 MB", "sha256": "646546e15f96af28f3f2337d1a47e92cad9a548c65a47fd170f8cfbb245dc649"},
-    {"name": "VYRA-Client-Setup-0.2.0.exe", "size": "0,0 MB", "sha256": "58c8333b9a49b7e1ec5760f5bdf5325d6d2bc26aee13832b4bd05396cbee3e7f"},
-    {"name": "VyraLauncher-0.2.0.exe", "size": "0,1 MB", "sha256": "4d6231f57d3b9562c2063e9619bff5f52289ade9d25efe948185780fea79172c"}
+    {"name": "ASLAN-Client-Setup-0.3.0.exe", "size": "0,0 MB", "sha256": "98710e980e3b62078fe93e00bfe47054856889c31b313de8954a50a3d29463dd"},
+    {"name": "AslanLauncher-0.3.0.exe", "size": "0,2 MB", "sha256": "039f9fcb126fe5ee560ee1f2cdd5ccbb881f0d0b8e54dd5f775a131dd349dcff"}
 ]}
